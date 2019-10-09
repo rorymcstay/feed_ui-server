@@ -22,7 +22,7 @@ feed_params = {
 database_parameters = {
     "host": os.getenv("DATABSE_HOST", "database"),
     "port": os.getenv("DATABASE_PORT", 5432),
-    "database": "postgres",
-    "user": "postgres",
-    "password": "postgres"
+    "database": os.getenv("DATABASE_NAME", 5432),
+    "user": os.getenv("DATABASE_USER", 5432),
+    "password": os.getenv("DATABASE_PASS", 5432),
 }
