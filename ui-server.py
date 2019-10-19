@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 CORS(app)
-
+api_prefix = "/api"
 Search.register(app, route_base=api_prefix + "/search")
 FeedManager.register(app, route_base=api_prefix + "/feedmanager")
 ScheduleManager.register(app, route_base=api_prefix + "schedulemanager")
