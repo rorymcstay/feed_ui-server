@@ -11,6 +11,7 @@ from src.main.tables import TableManager
 logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
+app.config['APPLICATION_ROOT'] = '/api'
 CORS(app)
 
 Search.register(app)
