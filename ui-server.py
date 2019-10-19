@@ -13,9 +13,9 @@ logging.basicConfig(level=logging.INFO)
 app = Flask(__name__)
 CORS(app)
 api_prefix = "/api"
-Search.register(app, route_base=api_prefix + "/search")
-FeedManager.register(app, route_base=api_prefix + "/feedmanager")
-ScheduleManager.register(app, route_base=api_prefix + "schedulemanager")
+Search.register(app, route_prefix=api_prefix + "/search")
+FeedManager.register(app, route_prefix=api_prefix + "/feedmanager")
+ScheduleManager.register(app, route_prefix=api_prefix + "schedulemanager")
 TableManager.register(app, routebase=api_prefix + "tablemanager")
 
 print(app.url_map)
