@@ -11,13 +11,12 @@ from src.main.tables import TableManager
 logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
-app.config['APPLICATION_ROOT'] = '/api'
 CORS(app)
 
-Search.register(app)
-FeedManager.register(app)
-ScheduleManager.register(app)
-TableManager.register(app)
+Search.register(app, route_base=api_prefix + "/search")
+FeedManager.register(app, route_base=api_prefix + "/feedmanager")
+ScheduleManager.register(app, route_base=api_prefix + "schedulemanager")
+TableManager.register(app, routebase=api_prefix + "tablemanager")
 
 print(app.url_map)
 
