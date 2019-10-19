@@ -117,7 +117,7 @@ class FeedManager(FlaskView):
                 feed = self.dockerClient.containers.get(feedName)
                 feed.start()
             except APIError as e:
-                with open("./docker.env") as file:
+                with open("/home/deploymemt.env") as file:
                     string = file.read()
                     env_vars = list(filter(lambda item: item is not "", string.split("\n")))
 

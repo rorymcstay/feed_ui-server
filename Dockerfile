@@ -10,7 +10,6 @@ COPY src ./src
 COPY requirements.txt ./requirements.txt
 COPY settings.py ./settings.py
 COPY ui-server.py ./app.py
-COPY docker.env ./
 
 RUN apk update
 RUN apk add --virtual build-deps gcc python3-dev musl-dev

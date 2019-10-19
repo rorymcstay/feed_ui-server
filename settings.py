@@ -15,8 +15,8 @@ mongo_params = {
     "serverSelectionTimeoutMS": 5
 }
 feed_params = {
-    "image": "car_feed",
-    "success": "feed has started"
+    "image": os.getenv("LEADER_TEMPLATE"),
+    "success": os.getenv("LEADER_START", "feed has started")
 }
 
 database_parameters = {
