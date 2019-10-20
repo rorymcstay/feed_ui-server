@@ -19,5 +19,12 @@ RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 RUN apk del build-deps
 
+######################
+# environment variables file for image template
+ENV LEADER_ENV_FILE=src/config/deployment.env
+RUN mkdir -p /home/src/config
+RUN touch /home/src/config/deployment.env
+
+
 # Entrypoint
 CMD ["python", "./app.py" ]

@@ -16,7 +16,8 @@ mongo_params = {
 }
 feed_params = {
     "image": os.getenv("LEADER_TEMPLATE"),
-    "success": os.getenv("LEADER_START", "feed has started")
+    "success": os.getenv("LEADER_START", "feed has started"),
+    "base_port": int(os.getenv("LEADER_BASE_PORT", 9000))
 }
 
 database_parameters = {

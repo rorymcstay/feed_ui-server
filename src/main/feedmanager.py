@@ -31,7 +31,7 @@ class FeedManager(FlaskView):
     admin = KafkaAdminClient(**kafka_params)
     kafkaClient = SimpleClient(hosts=kafka_params.get("bootstrap_servers")[0])
     feed_params: Database = mongoClient[os.getenv("PARAMETER_DATABASE", "params")]
-    feed_ports = {name.get("name"): 8000+i for (i, name) in enumerate(feeds["feed"].find({}))}
+    feed_ports = {name.get("name"): feed_params['base_port']+i for (i, name) in enumerate(feeds["leader"].find({}))}
 
     def getParameter(self, collection, name):
         params = self.feed_params[collection].find_one(filter={"name": name})
@@ -79,18 +79,18 @@ class FeedManager(FlaskView):
         return Response("ok", status=200)
 
     def getFeeds(self):
-        c = self.feeds["feed"].find({})
+        c = self.feeds["leader"].find({})
         data = [param.get("name") for param in c]
         return Response(json.dumps(data), mimetype="application/json")
 
     def newFeed(self, feedName):
         port = len(self.feed_ports)
         self.feed_ports.update({feedName: 8000 + port})
-        c = self.feeds["feed"].find({"name": feedName})
+        c = self.feeds["leader"].find({"name": feedName})
         if any(val == feedName for val in c):
             pass
         else:
-            self.feeds["feed"].insert_one({"name": feedName})
+            self.feeds["leader"].insert_one({"name": feedName})
         return "ok"
 
     def startFeed(self, feedName):
@@ -117,18 +117,17 @@ class FeedManager(FlaskView):
                 feed = self.dockerClient.containers.get(feedName)
                 feed.start()
             except APIError as e:
-                with open("/home/envs/deploymemt.env") as file:
-                    string = file.read()
-                    env_vars = list(filter(lambda item: item is not "", string.split("\n")))
-
+                services = ["FLASK", "NANNY", "ROUTER", "KAFKA", "BROWSER"]
                 image = self.dockerClient.images.get(feed_params['image'])
-                feed: Container = self.dockerClient.containers.run(image,
+                all_env = list(map(lambda key: '{}={}'.format(*key), os.environ.items()))
+                env_vars = list(filter(lambda item: any(service in item for service in services), all_env))
+                feed: Container = self.dockerClient.containers.run(image=image,
                                                                    environment=["NAME={}".format(feedName),
                                                                                 'BROWSER_PORT={}'.format(self.feed_ports.get(feedName))] + env_vars,
                                                                    detach=True,
                                                                    name=feedName,
                                                                    restart_policy={"Name": 'always'},
-                                                                   network=os.getenv("NETWORK", "car_default"))
+                                                                   network=os.getenv("NETWORK", "feed_default"))
             return Response(json.dumps({"status": True}), status=200)
 
     def stopFeed(self, feedName):
