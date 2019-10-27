@@ -20,7 +20,7 @@ class TableManager(FlaskView):
     def getTableNames(self, feedName):
 
         query = """
-        select table_name from information_schema.tables 
+        select table_name from information_schema.tables
         where table_name like '%{}%'""".format(feedName)
 
         c: cursor = self.client.cursor()

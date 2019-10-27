@@ -1,7 +1,7 @@
 import os
 
 kafka_params = {
-    "bootstrap_servers": [os.getenv("KAFKA_ADDRESS", "localhost:29092")],
+    "bootstrap_servers": [os.getenv("KAFKA_ADDRESS", "localhost:29092")]
 }
 
 hazelcast_params = {
@@ -21,9 +21,9 @@ feed_params = {
 }
 
 database_parameters = {
-    "host": os.getenv("DATABSE_HOST", "localhost"),
+    "host": os.getenv("DATABASE_HOST", "localhost"),
     "port": os.getenv("DATABASE_PORT", 5432),
     "database": os.getenv("DATABASE_NAME", "feeds"),
     "user": os.getenv("DATABASE_USER", "feeds"),
-    "password": os.getenv("DATABASE_PASS", "feeds"),
+    "password": os.getenv("DATABASE_PASS", "feeds")
 }
