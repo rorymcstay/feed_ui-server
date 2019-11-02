@@ -11,17 +11,20 @@ from pymongo import MongoClient
 from settings import database_parameters
 from settings import mongo_params
 
+
 class TableManager(FlaskView):
     client: connection = psycopg2.connect(**database_parameters)
     mongo = MongoClient(**mongo_params)
     client.autocommit = True
     numberFields = {}
 
-    def getTableNames(self, feedName):
+    def getTableTypes(self):
+        return [table.get("name") for table in self.mongo["table"]["type"].find({})]
 
-        query = """
+    def getTableNames(self, feedName):
+        query = f"""
         select table_name from information_schema.tables
-        where table_name like '%{}%'""".format(feedName)
+        where table_name like '%{feedName}%'"""
 
         c: cursor = self.client.cursor()
         c.execute(query)
@@ -63,9 +66,11 @@ class TableManager(FlaskView):
     @route('/uploadMapping/<string:name>', methods=['PUT'])
     def uploadMapping(self, name):
         val = request.get_json()
-        obj = {"name": name, "value": val}
+        tableName = val.pop("tableName")
+        obj = {"name": name, "value": val, "tableName": tableName}
         self.mongo['mapping']['values'].replace_one({"name": name}, obj, upsert=True)
         return "ok"
+
 
 class Serialiser(JSONEncoder):
 
