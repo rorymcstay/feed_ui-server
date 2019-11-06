@@ -47,10 +47,13 @@ class TableManager(FlaskView):
         req = request.get_json()
         query = "select {columns} from {tableName} {predicates} limit {} offset {}".format(page, pageSize, **req)
         c: cursor = self.client.cursor()
+        c.execute(f'select count(*) from {req.get("tableName")}')
+
+        pages = c.fetchone()[0]/pageSize
         c.execute(query)
         data = list(map(lambda row: {c.description[i].name: row[i] for i in range(len(c.description))}, c.fetchall()))
         columns = [{"Header": column.name, "accessor": column.name} for column in c.description]
-        response = {"data": data, "columns": columns}
+        response = {"data": data, "columns": columns, "pages": pages}
         return Response(json.dumps(response, cls=Serialiser))
 
     def getMappingSchema(self):
