@@ -1,3 +1,4 @@
+feed_utils
 pymongo
 apscheduler
 requests

@@ -18,7 +18,7 @@ from flask_classy import FlaskView, route
 import pymongo
 from pymongo.database import Database
 
-from settings import mongo_params, kafka_params, feed_params
+from feed.settings import mongo_params, kafka_params, feed_params
 
 
 class FeedManager(FlaskView):

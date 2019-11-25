@@ -8,8 +8,8 @@ from flask_classy import FlaskView, route
 from psycopg2._psycopg import connection, cursor
 from pymongo import MongoClient
 
-from settings import database_parameters
-from settings import mongo_params
+from feed.settings import database_parameters
+from feed.settings import mongo_params
 
 
 class TableManager(FlaskView):

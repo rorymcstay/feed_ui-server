@@ -10,7 +10,8 @@ import json
 
 from kafka import KafkaProducer
 
-from settings import kafka_params, mongo_params
+from feed.settings import kafka_params, mongo_params
+
 
 class ScheduledCollection:
 

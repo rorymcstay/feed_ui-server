@@ -7,7 +7,7 @@ from flask import request, Response
 from hazelcast.serialization.predicate import sql
 from hazelcast.serialization import predicate as preds
 
-from settings import hazelcast_params, mongo_params
+from feed.settings import hazelcast_params, mongo_params
 
 
 class Search(FlaskView):
