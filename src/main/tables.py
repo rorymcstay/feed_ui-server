@@ -42,18 +42,30 @@ class TableManager(FlaskView):
         results = [name[0] for name in c.fetchall()]
         return Response(json.dumps(results, cls=Serialiser), mimetype='application/json')
 
-    @route('/getResults/<int:page>/<int:pageSize>', methods=['PUT', 'GET'])
+    def getColumnSchema(self, tableName):
+        query = """
+                SELECT column_name
+                FROM information_schema.columns
+                where table_name = '{}';
+                """.format(tableName)
+        c: cursor = self.client.cursor()
+        c.execute(query)
+        results = [name[0] for name in c.fetchall()]
+        columns = [{"Header": column, "accessor": column} for column in results]
+        return Response(json.dumps(columns, cls=Serialiser), mimetype='application/json')
+
+    @route('/getResults/<int:page>/<int:pageSize>', methods=['POST', 'GET'])
     def getResults(self, page, pageSize):
         req = request.get_json()
-        query = "select {columns} from {tableName} {predicates} limit {} offset {}".format(page, pageSize, **req)
+        query = "select {columns} from {tableName} {predicates} limit {size} offset {page}".format(size=pageSize, page=page-1, **req)
         c: cursor = self.client.cursor()
         c.execute(f'select count(*) from {req.get("tableName")}')
 
-        pages = c.fetchone()[0]/pageSize
+        pages = round(c.fetchone()[0]/pageSize)
         c.execute(query)
         data = list(map(lambda row: {c.description[i].name: row[i] for i in range(len(c.description))}, c.fetchall()))
-        columns = [{"Header": column.name, "accessor": column.name} for column in c.description]
-        response = {"data": data, "columns": columns, "pages": pages}
+        #columns = [{"Header": column.name, "accessor": column.name} for column in c.description]
+        response = {"data": data, "pages": pages}
         return Response(json.dumps(response, cls=Serialiser))
 
     def getMappingSchema(self):
