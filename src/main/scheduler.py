@@ -1,21 +1,24 @@
-from docker import client as dockerClient
-import sys
+import json
 from datetime import datetime, timedelta
+from typing import List
 
+import sys
+from apscheduler.job import Job
 from apscheduler.jobstores.mongodb import MongoDBJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
-from flask import request
+from apscheduler.triggers.interval import IntervalTrigger
+from docker import client as dockerClient
+from feed.settings import kafka_params, mongo_params
+from flask import request, Response
 from flask_classy import FlaskView, route
-import json
-
 from kafka import KafkaProducer
 
-from feed.settings import kafka_params, mongo_params
+from src.main.tables import Serialiser
 
 
 class ScheduledCollection:
 
-    def __init__(self, feedName,**kwargs):
+    def __init__(self, feedName, **kwargs):
         self.feedName = feedName
         self.url = kwargs.get("url")
         self.trigger = kwargs.get("trigger")
@@ -40,7 +43,6 @@ class JobExecutor:
 
 
 class ScheduleManager(FlaskView):
-
     scheduler = BackgroundScheduler()
     job_store = MongoDBJobStore(**mongo_params)
     scheduler.add_jobstore(job_store)
@@ -51,6 +53,7 @@ class ScheduleManager(FlaskView):
     """
     If you schedule jobs in a persistent job store during your application’s initialization, you MUST define an explicit ID for the job and use replace_existing=True or you will get a new copy of the job every time your application restarts!Tip
     """
+
     @route("scheduleContainer/<string:feedName>", methods=["PUT"])
     def scheduleContainer(self, feedName):
         job = ScheduledCollection(feedName, **request.get_json())
@@ -62,10 +65,11 @@ class ScheduleManager(FlaskView):
             timing = {
                 job.increment: int(job.increment_size),
             }
-        self.scheduler.add_job(self.executor.startContainer, job.trigger, args=[feedName], id=feedName, replace_existing=True,**timing)
+        self.scheduler.add_job(self.executor.startContainer, job.trigger, args=[feedName], id=feedName,
+                               replace_existing=True, **timing)
         return 'ok'
 
-    @route("addJob/<string:feedName>",methods=["PUT"])
+    @route("addJob/<string:feedName>", methods=["PUT"])
     def addJob(self, feedName):
         job = ScheduledCollection(feedName, **request.get_json())
         timing = {
@@ -76,6 +80,10 @@ class ScheduleManager(FlaskView):
 
     def getStatus(self):
         isRunning = self.scheduler.running
-        jobs = self.scheduler.get_jobs()
-        payload = {"isRunning": isRunning, "jobs": jobs}
-        return json.dumps(payload)
+        jobs: List[Job] = self.scheduler.get_jobs()
+        payload = {"isRunning": isRunning, "jobs": [{'job_name': job.id,
+                                                     'next_run': job.next_run_time,
+                                                     'trigger': "interval" if isinstance(job.trigger,
+                                                                                         IntervalTrigger) else "date"}
+                                                    for job in jobs]}
+        return Response(json.dumps(payload, cls=Serialiser), mimetype="application/json")

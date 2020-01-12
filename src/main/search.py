@@ -1,13 +1,11 @@
 import json
 
 import pymongo
+from feed.settings import hazelcast_params, mongo_params
+from flask import request, Response
 from flask_classy import FlaskView, route
 from hazelcast import HazelcastClient, ClientConfig
-from flask import request, Response
 from hazelcast.serialization.predicate import sql
-from hazelcast.serialization import predicate as preds
-
-from feed.settings import hazelcast_params, mongo_params
 
 
 class Search(FlaskView):

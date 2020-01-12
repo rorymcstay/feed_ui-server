@@ -57,7 +57,7 @@ class TableManager(FlaskView):
     @route('/getResults/<int:page>/<int:pageSize>', methods=['POST', 'GET'])
     def getResults(self, page, pageSize):
         req = request.get_json()
-        query = "select {columns} from {tableName} {predicates} limit {size} offset {page}".format(size=pageSize, page=page-1, **req)
+        query = "select {columns} from {tableName} {predicates} limit {size} offset {page}".format(size=pageSize, page=page, **req)
         c: cursor = self.client.cursor()
         c.execute(f'select count(*) from {req.get("tableName")}')
 
@@ -76,7 +76,9 @@ class TableManager(FlaskView):
         val = self.mongo['mapping']['values'].find_one({"name": name})
         if val is not None:
             val = val.get('value')
-        return Response(json.dumps(val, cls=Serialiser), mimetype='application/json')
+        else:
+            val = []
+        return Response(json.dumps(val.get('mapping'), cls=Serialiser), mimetype='application/json')
 
     @route('/uploadMapping/<string:name>', methods=['PUT'])
     def uploadMapping(self, name):

@@ -115,6 +115,8 @@ class FeedManager(FlaskView):
                 pass
             try:
                 feed = self.dockerClient.containers.get(feedName)
+                logging.info(
+                    f'starting {feedName} worker container from image {feed.image.id}')
                 feed.start()
             except APIError as e:
                 services = ["FLASK", "NANNY", "ROUTER", "KAFKA", "BROWSER"]
@@ -128,6 +130,7 @@ class FeedManager(FlaskView):
                                                                    name=feedName,
                                                                    restart_policy={"Name": 'always'},
                                                                    network=os.getenv("NETWORK", "feed_default"))
+                logging.info(f'created {feedName} on network {os.getenv("NETWORK")} on port {self.feed_ports.get(feedName)} from image {feed.image.id}')
             return Response(json.dumps({"status": True}), status=200)
 
     def stopFeed(self, feedName):
