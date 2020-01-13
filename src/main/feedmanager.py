@@ -22,25 +22,73 @@ from feed.settings import mongo_params, kafka_params, feed_params
 
 
 class FeedManager(FlaskView):
-    dockerClient = docker.from_env()
-    mongoClient = pymongo.MongoClient(**mongo_params)
-    forms: Database = mongoClient[os.getenv("FORM_DATABASE", "forms")]
-    feeds: Database = mongoClient[os.getenv("PARAMETER_DATABASE", "params")]
-    parameter_stats: Database = mongoClient[os.getenv("PARAM_STATS_DATABASE", "params_stats")]
-    parameterSchemas = forms['parameterSchemas']
-    admin = KafkaAdminClient(**kafka_params)
-    kafkaClient = SimpleClient(hosts=kafka_params.get("bootstrap_servers")[0])
-    feed_params: Database = mongoClient[os.getenv("PARAMETER_DATABASE", "params")]
-    feed_ports = {name.get("name"): feed_params['base_port']+i for (i, name) in enumerate(feeds["leader"].find({}))}
+    def __init__(self):
+        self.dockerClient = docker.from_env()
+        self.mongoClient = pymongo.MongoClient(**mongo_params)
+        self.forms: Database = self.mongoClient[os.getenv("FORM_DATABASE", "forms")]
+        self.feeds: Database = self.mongoClient[os.getenv("PARAMETER_DATABASE", "params")]
+        self.parameter_stats: Database = self.mongoClient[os.getenv("PARAM_STATS_DATABASE", "params_stats")]
+        self.parameterSchemas = self.forms['parameterSchemas']
+        self.admin = KafkaAdminClient(**kafka_params)
+        self.kafkaClient = SimpleClient(hosts=kafka_params.get("bootstrap_servers")[0])
+        self.feed_params: Database = self.mongoClient[os.getenv("PARAMETER_DATABASE", "params")]
+        self.feed_ports = {name.get("name"): feed_params['base_port']+i for (i, name) in enumerate(self.feeds["leader"].find({}))}
 
-    def getParameter(self, collection, name):
-        params = self.feed_params[collection].find_one(filter={"name": name})
+    def getParameter(self, component, feedName):
+        """
+        return the parameter for the service component
+
+        @example:
+
+            #req: GET leader/donedeal
+
+            #res:
+            {
+                "name": "donedeal",
+                "next_page_xpath": "//*[@id]",
+                "next_button_text": "next",
+                "next_button_css": ".icon-nav_arrow_right",
+                "result_stub": "https://www.donedeal.co.uk/cars-for-sale/",
+                "wait_for": ".cad-header",
+                "base_url": "https://donedeal.co.uk/cars",
+                "result_stream": {
+                  "class": "card-item",
+                  "single": false
+                },
+                "page_url_param": "sort"
+            }
+
+        :param component: 
+        :param name: 
+        :return: 
+        """
+        params = self.feed_params[component].find_one(filter={"name": feedName})
         if params is None:
             return Response(status=404)
         params.pop("_id")
         return Response(json.dumps(params), mimetype="application/json")
 
     def getParameterStatus(self, feedName):
+        """
+        Get the number of fails a component parameter value has
+
+        @example1:
+
+            #request: GET getParameterStatus/donedeal
+
+            #payload: None
+
+            #response:
+            {
+                "errors": errors,
+                "name": parameterName
+            }
+
+        @example2:
+
+        :param feedName:
+        :return:
+        """
         c = self.parameterSchemas.find({})
         payload = []
         for parameterName in [param.get("name") for param in c]:
