@@ -94,5 +94,3 @@ class Serialiser(JSONEncoder):
     def default(self, o):
         if isinstance(o, datetime):
             return str(o).split('.')[0]
-
-

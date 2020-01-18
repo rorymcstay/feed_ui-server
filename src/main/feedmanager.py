@@ -38,11 +38,11 @@ class FeedManager(FlaskView):
         """
         return the parameter for the service component
 
-        @example:
+        <example1>
 
-            #req: GET leader/donedeal
+            #request: GET leader/donedeal
 
-            #res:
+            #response:
             {
                 "name": "donedeal",
                 "next_page_xpath": "//*[@id]",
@@ -57,6 +57,7 @@ class FeedManager(FlaskView):
                 },
                 "page_url_param": "sort"
             }
+        <example1/>
 
         :param component: 
         :param name: 
@@ -84,7 +85,7 @@ class FeedManager(FlaskView):
                 "name": parameterName
             }
 
-        @example2:
+        @
 
         :param feedName:
         :return:
