@@ -17,6 +17,7 @@ IGNORE_FAILS = True
 TEST_CLAUSES = ["request", "response", "payload"]
 MANDATORY = ["request", "response"]
 JSON_CHARS = '}{:,"'
+METHOD_POS = 2 # if leading slash, method name will be in second chunk of request
 
 
 class MethodNotImplemented(Response):
@@ -46,28 +47,28 @@ class ExpectedRequest:
         self.actualPayload = None
         self.actualCase = None
 
-        for clause in TEST_CLAUSES:
-            '''func = getattr(self, f'_{clause}')
-            if func is None:
-                assert (f'method _{clause} is not implemted' and False)'''
+        '''func = getattr(self, f'_{clause}')
+        if func is None:
+            assert (f'method _{clause} is not implemted' and False)'''
 
-            logging.info(f'_{clause} for method cases: {self.cases.keys()} has been implemented')
-            for i in self.cases:
-                case = self.cases.get(i)
-                if case is not None and all(ch in case.get(clause) for ch in  JSON_CHARS):
+        for i in self.cases:
+            case = self.cases.get(i)
+            for clause in case:
+                logging.info(f'_{clause} for method cases: {self.cases.keys()} has been implemented')
+                if case is not None and all(ch in case.get(clause) for ch in JSON_CHARS):
                     try:
-                        json.loads(case.get('payload'))
+                        json.loads(case.get(clause))
                     except JSONDecodeError as e:
                         assert (False and f'{clause} of {i.split("/")[1]} for test case {i} is not valid. JSONDecodeError \
                                 postion: {e.pos} line: {e.lineno} col: {e.colno} message: {e.msg}' or IGNORE_FAILS)
 
     @staticmethod
     def getmethodfrompath(uri):
-        method = uri.split('/')[1]
+        method = uri.split('/')[METHOD_POS]
         return method
 
     def handleRequest(self, requestContext: Request):
-        self.actualPayload = requestContext.json()if 'json' in requestContext.mimetype else None
+        self.actualPayload = requestContext.json if 'json' in requestContext.mimetype else None
         self.actualResponse = None
         self.actualCase = self.getmethodfrompath(requestContext.path)
         self.actualMethod = requestContext.method
@@ -138,11 +139,13 @@ class DocumentationTest:
 
     def getTestClauses(self, name):
         res = DocumentationTest._testCaseRegex(name).split(self.source.replace("\n", " "))
-        items = self._itemsregex.split(res[2].strip())
+        case = list(filter(lambda item: all(clause in item for clause in MANDATORY), res))
+        assert(len(case) == 1)
+        items = self._itemsregex.split(res[0].strip())
         logging.info(f'found test case name: {name}')
         out, i = {}, 0
         while i < len(items):
-            if self._itemsregex.match(items[i]):
+            if name in items[i]:
                 out.update({items[i].replace('#', '').replace(':', ''): items[i + 1].strip()})
                 i += 2
             else:
@@ -173,7 +176,7 @@ class DocumentationTest:
                         continue
                     else:
                         case.update({i: items.get(i)})
-                uri = req.split(" ")[1]
+                uri = req
                 caseResponses.update({uri: case})
         methods = doc.getValidMethods()
         return ExpectedRequest(cases=caseResponses, methods=methods)
@@ -183,16 +186,16 @@ class MockedMethod:
     expectedRequest: ExpectedRequest
 
     def __init__(self, method):
-        self.method = method
         self.argspec = getfullargspec(method)
+        self.method = method
 
-    def __repr__(self):
-        return f'{self.__class__.__name__}: {self.expectedRequest.methods}, \
-                 cases: {json.dumps(self.expectedRequest.cases, indent=4)}'
+    #def __str__(self):
+     #   return f'{self.__class__.__name__}: {self.expectedRequest.methods}, \
+      #           cases: {json.dumps(self.expectedRequest.cases, indent=4)}'
 
     def runMethod(self, req: Request):
-        expectedRequest = DocumentationTest.generate(req)
-        expectedRequest.handleRequest(req)
+        self.expectedRequest = DocumentationTest.generate(self.method)
+        return  self.expectedRequest.handleRequest(req)
 
 
 def MockFactory(service, app):
@@ -215,8 +218,7 @@ def MockFactory(service, app):
                 self.app.add_url_rule(f'/{service.get_route_base()}/{method}/{params}', method, self._runMethod)
 
         def _mockMethod(self, methodName: str):
-            methodHandler = DocumentationTest.generate(getattr(service, methodName))
-            method = MockedMethod(methodHandler)
+            method = MockedMethod(getattr(service, methodName))
             self.actions.update({methodName: method})
             logging.debug(f'mocked method on uri: {methodName} with {method}')
 
@@ -226,16 +228,24 @@ def MockFactory(service, app):
             logging.debug(f'running mocked method on uri: {uri} with {action}')
             if action is None:
                 return FailResponse('no action')
-            if len(action.argspec.args) != len(args):
+            compare = len(action.argspec.args) -1 if 'self' in action.argspec.args else len(action.argspec.args)
+            if compare != len(args):
                 return URLArgumentError(actual=args, expected=action.argspec)
-            return action.expectedRequest.handleRequest(request)
+            return action.runMethod(request)
 
     return MockService(app)
 
 
 if __name__ == '__main__':
     from src.main.feedmanager import FeedManager
-
+    from threading import Thread
+    import requests as r
     app = Flask(__name__)
     t = MockFactory(FeedManager, app)
     t.init()
+    appThread = Thread(target=app.run, args=())
+    appThread.start()
+
+    req = r.get("http://127.0.0.1:5000/feedmanager/getFeeds/")
+    print(req)
+

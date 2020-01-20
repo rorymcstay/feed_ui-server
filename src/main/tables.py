@@ -32,11 +32,11 @@ class TableManager(FlaskView):
         return Response(json.dumps(results, cls=Serialiser), mimetype='application/json')
 
     def getAllColumns(self, tableName):
-        query = """
+        query = f"""
         SELECT column_name
         FROM information_schema.columns
-        where table_name = '{}';
-        """.format(tableName)
+        where table_name = '{tableName}';
+        """
         c: cursor = self.client.cursor()
         c.execute(query)
         results = [name[0] for name in c.fetchall()]

@@ -40,7 +40,7 @@ class FeedManager(FlaskView):
 
         <example1>
 
-            #request: GET leader/donedeal
+            #request: /leader/donedeal
 
             #response:
             {
@@ -73,17 +73,15 @@ class FeedManager(FlaskView):
         """
         Get the number of fails a component parameter value has
 
-        @example1:
-
+        <example1>
             #request: GET getParameterStatus/donedeal
-
-            #payload: None
 
             #response:
             {
                 "errors": errors,
                 "name": parameterName
             }
+        <example1/>
 
         @
 
@@ -102,18 +100,82 @@ class FeedManager(FlaskView):
         return Response(json.dumps(payload), mimetype='application/json')
 
     def getParameterTypes(self):
+        """
+        <example1>
+            #request: /getParameterTypes/
+            #response:
+                [ "leader", "router", "mapper", "persistence", "worker", "leader"]
+        <example1/>
+        :return:
+        """
         c = self.parameterSchemas.find({})
 
         data = [param.get("name") for param in c]
         return Response(json.dumps(data), mimetype="application/json")
 
     def getParameterSchema(self, parameterName):
+        """
+        <example1>
+            #request: /getParameterSchema/worker
+            #response:
+            {
+                "name": "worker",
+                "value": {
+                    "title": "Worker Stream Config",
+                    "description": "specifies what the worker should send out",
+                    "type": "object",
+                    "properties": {
+                        "class": {
+                            "type": "string",
+                            "default": null,
+                            "title": "name of class to stream"
+                        },
+                        "single": {
+                        "type": "boolean",
+                        "default": true,
+                        "title": "is the item unique"
+                    },
+                    "page_ready": {
+                        "type": "string",
+                        "default": "img",
+                        "title": "the class of the item to wait for"
+                    }
+                }
+            }
+            <example1/>
+
+        :param parameterName:
+        :return:
+        """
         parameter = self.parameterSchemas.find_one({"name": parameterName})
         val = parameter['value']
         return Response(json.dumps(val), mimetype="application/json")
 
     @route("/setParameter/<string:collection>/<string:name>", methods=['PUT'])
     def setParameter(self, collection, name=None):
+        """
+        <example1>
+            #request: /setParameter/worker/donedeal
+            #payload: {
+                "name": "donedeal",
+                "next_page_xpath": "//*[@id]",
+                "next_button_text": "next",
+                "next_button_css": ".icon-nav_arrow_right",
+                "result_stub": "https://www.donedeal.co.uk/cars-for-sale/",
+                "wait_for": ".cad-header",
+                "base_url": "https://donedeal.co.uk/cars",
+                "result_stream": {
+                  "class": "card-item",
+                  "single": false
+                },
+                "page_url_param": "sort"
+            }
+            #response: "ok"
+        <example1/>
+        :param collection:
+        :param name:
+        :return:
+        """
         value = request.get_json()
         param: dict = self.feed_params[collection].find_one({"name": name})
         value.update({"name": name})
@@ -128,11 +190,26 @@ class FeedManager(FlaskView):
         return Response("ok", status=200)
 
     def getFeeds(self):
+        """
+        <example1>
+            #request: /getFeeds/
+            #response: ["donedeal", "pistonheads"]
+        <example1/>
+        :return:
+        """
         c = self.feeds["leader"].find({})
         data = [param.get("name") for param in c]
         return Response(json.dumps(data), mimetype="application/json")
 
     def newFeed(self, feedName):
+        """
+        <example>
+            #request: /newFeed/donedeal
+            #resposne: "ok"
+        <example/>
+        :param feedName:
+        :return:
+        """
         port = len(self.feed_ports)
         self.feed_ports.update({feedName: 8000 + port})
         c = self.feeds["leader"].find({"name": feedName})
@@ -143,6 +220,14 @@ class FeedManager(FlaskView):
         return "ok"
 
     def startFeed(self, feedName):
+        """
+        <example1>
+             #request: /startFeed/donedeal
+             #response: {"status": true}
+        <example1/>
+        :param feedName:
+        :return:
+        """
         logging.info("starting feed {}".format(feedName))
         parameterSets = self.feeds.list_collection_names(include_system_collections=False)
         notSet = []
@@ -174,7 +259,7 @@ class FeedManager(FlaskView):
                 env_vars = list(filter(lambda item: any(service in item for service in services), all_env))
                 feed: Container = self.dockerClient.containers.run(image=image,
                                                                    environment=["NAME={}".format(feedName),
-                                                                                'BROWSER_PORT={}'.format(self.feed_ports.get(feedName))] + env_vars,
+                                                                                f'BROWSER_PORT={self.feed_ports.get(feedName)}'] + env_vars,
                                                                    detach=True,
                                                                    name=feedName,
                                                                    restart_policy={"Name": 'always'},
@@ -183,6 +268,14 @@ class FeedManager(FlaskView):
             return Response(json.dumps({"status": True}), status=200)
 
     def stopFeed(self, feedName):
+        """
+        <example1>
+             #request: /stopFeed/donedeal
+             #response: "ok"
+        <example1/>
+        :param feedName:
+        :return:
+        """
         feed = self.dockerClient.containers.get(feedName)
         feed.stop()
         feed.remove()
@@ -190,6 +283,14 @@ class FeedManager(FlaskView):
         return "ok"
 
     def feedStatus(self, feedName):
+        """
+        <example1>
+             #request: /feedStatus/donedeal
+             #response: {"status": true}
+        <example1/>
+        :param feedName:
+        :return:
+        """
         try:
             feed = self.dockerClient.containers.get(feedName)
             if feed.status == 'running':
