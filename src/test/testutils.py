@@ -17,7 +17,7 @@ IGNORE_FAILS = True
 TEST_CLAUSES = ["request", "response", "payload"]
 MANDATORY = ["request", "response"]
 JSON_CHARS = '}{:,"'
-METHOD_POS = 2 # if leading slash, method name will be in second chunk of request
+METHOD_POS = 2  # if leading slash, method name will be in second chunk of request
 
 
 class MethodNotImplemented(Response):
@@ -85,7 +85,8 @@ class ExpectedRequest:
     def _request(self):
         action = self.cases.get(self.actualCase)
         if action is None:
-            return FailResponse(f'specific scenario not found actual: {self.actualCase}, expected one of: {self.cases.keys()}')
+            return FailResponse(
+                f'specific scenario not found actual: {self.actualCase}, expected one of: {self.cases.keys()}')
 
     def _response(self, actual=None):
         caseDetails = self.cases.get(self.actualCase)
@@ -139,17 +140,27 @@ class DocumentationTest:
 
     def getTestClauses(self, name):
         res = DocumentationTest._testCaseRegex(name).split(self.source.replace("\n", " "))
-        case = list(filter(lambda item: all(clause in item for clause in MANDATORY), res))
-        assert(len(case) == 1)
-        items = self._itemsregex.split(res[0].strip())
+        case = list(filter(lambda item: all(clause in item for clause in MANDATORY)
+                                        and not all(ch in item for ch in '</>'), res))
         logging.info(f'found test case name: {name}')
         out, i = {}, 0
-        while i < len(items):
-            if name in items[i]:
-                out.update({items[i].replace('#', '').replace(':', ''): items[i + 1].strip()})
-                i += 2
+        clauses = case[0].split()
+        while i < len(clauses):
+            if any(clause in clauses[i] for clause in TEST_CLAUSES):
+                clause = clauses[i]
+                det = ''
+                i += 1 if len(clauses) > i else 0
+                while not any(clau in clauses[i] for clau in TEST_CLAUSES) and i < len(clauses):
+                    det += clauses[i]
+                    i += 1
+                    if i >= len(clauses):
+                        break
+                out.update({clause.replace('#', '').replace(':', ''): det.strip()})
+                if i >= len(clauses):
+                    break
             else:
                 i += 1
+                continue
         return out
 
     def getNames(self):
@@ -189,13 +200,13 @@ class MockedMethod:
         self.argspec = getfullargspec(method)
         self.method = method
 
-    #def __str__(self):
-     #   return f'{self.__class__.__name__}: {self.expectedRequest.methods}, \
-      #           cases: {json.dumps(self.expectedRequest.cases, indent=4)}'
+    # def __str__(self):
+    #   return f'{self.__class__.__name__}: {self.expectedRequest.methods}, \
+    #           cases: {json.dumps(self.expectedRequest.cases, indent=4)}'
 
     def runMethod(self, req: Request):
         self.expectedRequest = DocumentationTest.generate(self.method)
-        return  self.expectedRequest.handleRequest(req)
+        return self.expectedRequest.handleRequest(req)
 
 
 def MockFactory(service, app):
@@ -210,7 +221,9 @@ def MockFactory(service, app):
 
         def init(self):
             # TODO non callables not being filtered out... feedName is getting in there
-            serviceMethods = [method for method in filter(lambda method: callable(getattr(service, method)) and '_' not in method, dir(service))]
+            serviceMethods = [method for method in
+                              filter(lambda method: callable(getattr(service, method)) and '_' not in method,
+                                     dir(service))]
             for method in serviceMethods:
                 args = getfullargspec(getattr(service, method))
                 params = "/".join([f'<{pname}>' for pname in args[0][1:]])
@@ -228,7 +241,7 @@ def MockFactory(service, app):
             logging.debug(f'running mocked method on uri: {uri} with {action}')
             if action is None:
                 return FailResponse('no action')
-            compare = len(action.argspec.args) -1 if 'self' in action.argspec.args else len(action.argspec.args)
+            compare = len(action.argspec.args) - 1 if 'self' in action.argspec.args else len(action.argspec.args)
             if compare != len(args):
                 return URLArgumentError(actual=args, expected=action.argspec)
             return action.runMethod(request)
@@ -240,6 +253,7 @@ if __name__ == '__main__':
     from src.main.feedmanager import FeedManager
     from threading import Thread
     import requests as r
+
     app = Flask(__name__)
     t = MockFactory(FeedManager, app)
     t.init()
@@ -248,4 +262,3 @@ if __name__ == '__main__':
 
     req = r.get("http://127.0.0.1:5000/feedmanager/getFeeds/")
     print(req)
-

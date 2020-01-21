@@ -11,12 +11,13 @@ from src.test.testutils import DocumentationTest
 def getFeeds():
     """
     <example1>
-        #request=/getFeeds/
-        #response="["donedeal", "pistonheads"]
+        #request: /getFeeds/
+        #response: ["donedeal", "pistonheads"]
     <example1/>
 
     <example2>
         #request: /getFeeds/
+        #payload: {"key": "value"}
         #response: ["donedeal", "pistonheads"]
     <example2/>
 
@@ -41,6 +42,10 @@ class TestDocumentationTest(TestCase):
         mets = docTest.getTestClauses('example1')
         self.assert_(mets.get('request') is not None)
         self.assert_(mets.get('response') is not None)
+        mets = docTest.getTestClauses('example2')
+        self.assert_(mets.get('request') is not None)
+        self.assert_(mets.get('response') is not None)
+        self.assert_(mets.get('payload') is not None)
 
     def test_get_names(self):
         docTest = DocumentationTest(getFeeds)
