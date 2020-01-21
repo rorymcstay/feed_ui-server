@@ -130,13 +130,23 @@ class DocumentationTest:
     def getValidMethods(self):
         dec = inspect.getsource(self.name).split("\n")[0]
         out = []
-        if '@route' in dec:
-            methods = self._methodsRegex.split(dec)[1]
-            for m in methods:
-                out.append(m.replace('"', '').replace(']', '').split(','))
-            return out
-        else:
-            return ['GET']
+        default = ['GET']
+        substrs = dec.split('methods')
+        if len(substrs) == 1 or '@route' not in dec:
+            return default
+        substrs = substrs[1].split(']')
+        i, loc = 0, None
+        while i < len(substrs):
+            if any(met in substrs[i] for met in ['GET', 'POST', 'DELETE', 'PUT']):
+                loc = i
+                break
+            i += 1
+        if loc is None:
+            return default
+        methods = substrs[loc].split(']')[0].replace('=', '').replace('[', '')
+        methodList = methods.replace('"' if '"' in methods else "'", '').split(',')
+        methodList = [met.strip() for met in methodList]
+        return methodList
 
     def getTestClauses(self, name):
         res = DocumentationTest._testCaseRegex(name).split(self.source.replace("\n", " "))
