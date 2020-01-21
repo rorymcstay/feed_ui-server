@@ -179,6 +179,8 @@ class DocumentationTest:
 
     @staticmethod
     def generate(func: callable) -> ExpectedRequest:
+        # TODO when func has no arguments, we only can store one case as we store in map with the url.
+        # TODO should have some sort of multimap or list of dicts
         doc = DocumentationTest(func)
         names = doc.getNames()
         caseResponses = {}
@@ -210,6 +212,7 @@ class MockedMethod:
         self.argspec = getfullargspec(method)
         self.method = method
 
+    # TODO this method fails when running as expectedRequest is not defined. should fix
     # def __str__(self):
     #   return f'{self.__class__.__name__}: {self.expectedRequest.methods}, \
     #           cases: {json.dumps(self.expectedRequest.cases, indent=4)}'
@@ -265,6 +268,7 @@ if __name__ == '__main__':
     import requests as r
 
     app = Flask(__name__)
+    print(app.url_map)
     t = MockFactory(FeedManager, app)
     t.init()
     appThread = Thread(target=app.run, args=())

@@ -1,18 +1,18 @@
-import _sre
-import json
 from unittest import TestCase
-
-from flask import Response
 from flask_classy import route
 
 from src.test.testutils import DocumentationTest
 
-example1 = {"request": "/getFeeds/",
-                    "response": '["donedeal","pistonheads"]'}
+example1 = {
+    "request": "/getFeeds/",
+    "response": '["donedeal","pistonheads"]'
+}
 
-example2 = {"request": "/getFeeds/",
-            "payload": '{"key":"value"}',
-            "response": '["donedeal","pistonheads"]'}
+example2 = {
+    "request": "/getFeeds/",
+    "payload": '{"key":"value"}',
+    "response": '["donedeal","pistonheads"]'
+}
 
 
 @route(rule="/a/partial/url/<params:string>", methods=['GET', 'POST'], other='somethingelse')
@@ -53,7 +53,7 @@ class TestDocumentationTest(TestCase):
         self.assertDictEqual(mets, example1)
 
         # optionally payload may be parsed
-        #TODO parse json in this method
+        # TODO parse json in this method
         mets = docTest.getTestClauses('example2')
         self.assertDictEqual(mets, example2)
 
@@ -67,4 +67,4 @@ class TestDocumentationTest(TestCase):
         example1.pop('request')
         example2.pop('request')
         self.assertDictEqual(er.cases, {'/getFeeds/case1': example1, '/getFeeds/case2': example2})
-        #TODO case where there are multiple cases for a method with no params
+        # TODO case where there are multiple cases for a method with no params
