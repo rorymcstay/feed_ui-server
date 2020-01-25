@@ -205,7 +205,7 @@ class FeedManager(FlaskView):
         """
         <example>
             #request: /newFeed/donedeal
-            #resposne: "ok"
+            #response: ok
         <example/>
         :param feedName:
         :return:

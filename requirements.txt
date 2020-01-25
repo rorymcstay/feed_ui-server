@@ -1,4 +1,4 @@
-feed_utils==0.0.21
+feed_utils==0.1.0
 pymongo
 apscheduler
 requests
