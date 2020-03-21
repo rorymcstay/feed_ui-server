@@ -7,10 +7,11 @@ import docker
 from docker.errors import APIError
 from docker.models.containers import Container
 from kafka.admin import KafkaAdminClient, NewTopic
-from kafka import SimpleClient
+from kafka import KafkaClient
 from kafka.errors import TopicAlreadyExistsError
 import json
 import os
+import requests as r
 
 from flask import Response, request
 from flask_classy import FlaskView, route
@@ -18,7 +19,7 @@ from flask_classy import FlaskView, route
 import pymongo
 from pymongo.database import Database
 
-from feed.settings import mongo_params, kafka_params, feed_params
+from feed.settings import mongo_params, kafka_params, feed_params, summarizer_params
 
 
 class FeedManager(FlaskView):
@@ -30,7 +31,8 @@ class FeedManager(FlaskView):
         self.parameter_stats: Database = self.mongoClient[os.getenv("PARAM_STATS_DATABASE", "params_stats")]
         self.parameterSchemas = self.forms['parameterSchemas']
         self.admin = KafkaAdminClient(**kafka_params)
-        self.kafkaClient = SimpleClient(hosts=kafka_params.get("bootstrap_servers")[0])
+        logging.info(f'bootstrap_servers: {kafka_params.get("bootstrap_servers")} kafka: {json.dumps(kafka_params, indent=4)}')
+        self.kafkaClient = KafkaClient(**kafka_params)
         self.feed_params: Database = self.mongoClient[os.getenv("PARAMETER_DATABASE", "params")]
         self.feed_ports = {name.get("name"): feed_params['base_port']+i for (i, name) in enumerate(self.feeds["leader"].find({}))}
 
@@ -59,9 +61,9 @@ class FeedManager(FlaskView):
             }
         <example1/>
 
-        :param component: 
-        :param name: 
-        :return: 
+        :param component:
+        :param name:
+        :return:
         """
         params = self.feed_params[component].find_one(filter={"name": feedName})
         if params is None:
@@ -211,7 +213,7 @@ class FeedManager(FlaskView):
         :return:
         """
         port = len(self.feed_ports)
-        self.feed_ports.update({feedName: 8000 + port})
+        self.feed_ports.update({feedName: feed_params['base_port'] + port})
         c = self.feeds["leader"].find({"name": feedName})
         if any(val == feedName for val in c):
             pass
@@ -219,13 +221,14 @@ class FeedManager(FlaskView):
             self.feeds["leader"].insert_one({"name": feedName})
         return "ok"
 
-    def startFeed(self, feedName):
+    def startFeed(self, feedName, mode):
         """
         <example1>
              #request: /startFeed/donedeal
              #response: {"status": true}
         <example1/>
         :param feedName:
+        :param mode: run mode, one of 'run', 'test', 'single'
         :return:
         """
         logging.info("starting feed {}".format(feedName))
@@ -257,15 +260,22 @@ class FeedManager(FlaskView):
                 image = self.dockerClient.images.get(feed_params['image'])
                 all_env = list(map(lambda key: '{}={}'.format(*key), os.environ.items()))
                 env_vars = list(filter(lambda item: any(service in item for service in services), all_env))
+                logging.info(f'using environment variables: {env_vars}')
                 feed: Container = self.dockerClient.containers.run(image=image,
+                                                                   command=f'--{mode}',
                                                                    environment=["NAME={}".format(feedName),
                                                                                 f'BROWSER_PORT={self.feed_ports.get(feedName)}'] + env_vars,
                                                                    detach=True,
                                                                    name=feedName,
-                                                                   restart_policy={"Name": 'always'},
+                                                                   restart_policy={"Name": 'always'} if mode == 'run' else None,
                                                                    network=os.getenv("NETWORK", "feed_default"))
                 logging.info(f'created {feedName} on network {os.getenv("NETWORK")} on port {self.feed_ports.get(feedName)} from image {feed.image.id}')
             return Response(json.dumps({"status": True}), status=200)
+
+    def getSampleData(self, name):
+        data = r.get("http://{host}:{port}/resultloader/getSampleData/{name}".format(name=name, **summarizer_params))
+        payload = data.json()
+        return Repsonse(json.dumps({"data":{"html": val for val in data}}), mimetype='application/json')
 
     def stopFeed(self, feedName):
         """

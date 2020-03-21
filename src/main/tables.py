@@ -42,7 +42,7 @@ class TableManager(FlaskView):
         results = [name[0] for name in c.fetchall()]
         return Response(json.dumps(results, cls=Serialiser), mimetype='application/json')
 
-    def getColumnSchema(self, tableName):
+    def getColumnNames(self, tableName):
         query = """
                 SELECT column_name
                 FROM information_schema.columns
@@ -51,14 +51,39 @@ class TableManager(FlaskView):
         c: cursor = self.client.cursor()
         c.execute(query)
         results = [name[0] for name in c.fetchall()]
+        return results
+
+    def getColumnSchema(self, tableName):
+        results = self.getColumnNames(tableName)
         columns = [{"Header": column, "accessor": column} for column in results]
         return Response(json.dumps(columns, cls=Serialiser), mimetype='application/json')
+
+    def checkTableStatus(self, name):
+        query = f"""
+        SELECT datname, pid, state, query, age(clock_timestamp(), query_start) AS age
+        FROM pg_stat_activity
+        WHERE state <> 'idle'
+            AND query NOT LIKE '% FROM pg_stat_activity %' and query like '%{name}%'
+        ORDER By age;
+        """
+        c = self.client.cursor()
+        c.execute(query)
+        data = list(map(lambda row: {c.description[i].name: row[i] for i in range(len(c.description))}, c.fetchall()))
+        if len(data) == 0:
+            return True
+        else:
+            return False
 
     @route('/getResults/<int:page>/<int:pageSize>', methods=['POST', 'GET'])
     def getResults(self, page, pageSize):
         req = request.get_json()
         query = "select {columns} from {tableName} {predicates} limit {size} offset {page}".format(size=pageSize, page=page, **req)
         c: cursor = self.client.cursor()
+        if  self.checkTableStatus(tableName):
+            columns = self.getColumnNames(tableName)
+            data = {col: "loading" for col in columns}
+            payload = {"data": data, "pages": 101}
+            return Response(json.dumps([payload]), mimetype='application/json')
         c.execute(f'select count(*) from {req.get("tableName")}')
 
         pages = round(c.fetchone()[0]/pageSize)
