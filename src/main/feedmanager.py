@@ -1,4 +1,4 @@
-import logging
+from feed.logger import logger as logging
 from datetime import datetime
 
 from time import time
@@ -65,6 +65,8 @@ class FeedManager(FlaskView):
         :param name:
         :return:
         """
+        if feedName == 'undefined':
+            return Response(json.dumps({}), mimetype='application/json', status=200)
         params = self.feed_params[component].find_one(filter={"name": feedName})
         if params is None:
             return Response(status=404)
@@ -275,7 +277,8 @@ class FeedManager(FlaskView):
     def getSampleData(self, name):
         data = r.get("http://{host}:{port}/resultloader/getSampleData/{name}".format(name=name, **summarizer_params))
         payload = data.json()
-        return Repsonse(json.dumps({"data":{"html": val for val in data}}), mimetype='application/json')
+        ret = {"data":[{"html": str(val)} for val in payload]}
+        return Response(json.dumps(ret), mimetype='application/json')
 
     def stopFeed(self, feedName):
         """

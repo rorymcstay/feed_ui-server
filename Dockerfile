@@ -11,10 +11,12 @@ ADD ./requirements.txt /home/requirements.txt
 RUN apk update
 RUN apk add --virtual build-deps gcc python3-dev musl-dev
 RUN apk add postgresql-dev
+
+RUN apk del build-deps
+
 RUN pip install --upgrade pip
 # Installing packages
 RUN pip install -r requirements.txt
-RUN apk del build-deps
 
 # Copying over necessary files
 COPY src /home/src
