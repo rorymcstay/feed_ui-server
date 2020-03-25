@@ -34,7 +34,6 @@ Search.register(app)
 FeedManager.register(app )
 ScheduleManager.register(app )
 TableManager.register(app )
-MapperManager.register(app)
 
 print(app.url_map)
 
