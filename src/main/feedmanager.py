@@ -240,6 +240,7 @@ class FeedManager(FlaskView):
             if self.feeds[set].find_one({"name": feedName}) is None:
                 notSet.append(set)
         if len(notSet):
+            logging.info(f'some parameters not set for {feedName}')
             payload = {"notSet": notSet, "status": False}
             return Response(json.dumps(payload), mimetype='application/json')
         else:
