@@ -19,7 +19,7 @@ from flask_classy import FlaskView, route
 import pymongo
 from pymongo.database import Database
 
-from feed.settings import mongo_params, kafka_params, feed_params, summarizer_params
+from feed.settings import mongo_params, kafka_params, feed_params, summarizer_params, command_params
 
 
 class FeedManager(FlaskView):
@@ -253,26 +253,8 @@ class FeedManager(FlaskView):
                 self.admin.create_topics(queues_to_make)
             except TopicAlreadyExistsError:
                 pass
-            try:
-                feed = self.dockerClient.containers.get(feedName)
-                logging.info(
-                    f'starting {feedName} worker container from image {feed.image.id}')
-                feed.start()
-            except APIError as e:
-                services = ["FLASK", "NANNY", "ROUTER", "KAFKA", "BROWSER"]
-                image = self.dockerClient.images.get(feed_params['image'])
-                all_env = list(map(lambda key: '{}={}'.format(*key), os.environ.items()))
-                env_vars = list(filter(lambda item: any(service in item for service in services), all_env))
-                logging.info(f'using environment variables: {env_vars}')
-                feed: Container = self.dockerClient.containers.run(image=image,
-                                                                   command=f'--{mode}',
-                                                                   environment=["NAME={}".format(feedName),
-                                                                                f'BROWSER_PORT={self.feed_ports.get(feedName)}'] + env_vars,
-                                                                   detach=True,
-                                                                   name=feedName,
-                                                                   restart_policy={"Name": 'always'} if mode == 'run' else None,
-                                                                   network=os.getenv("NETWORK", "feed_default"))
-                logging.info(f'created {feedName} on network {os.getenv("NETWORK")} on port {self.feed_ports.get(feedName)} from image {feed.image.id}')
+            r.get("http://{host}:{port}/feedjobmanager/addFeed/{name}".format(name=name, **command_params))
+            logging.info(f'added {name} to job manager')
             return Response(json.dumps({"status": True}), status=200)
 
     def getSampleData(self, name):
@@ -305,15 +287,9 @@ class FeedManager(FlaskView):
         :param feedName:
         :return:
         """
-        try:
-            feed = self.dockerClient.containers.get(feedName)
-            if feed.status == 'running':
-                status = True
-            else:
-                status = False
-        except APIError as e:
-            status = False
-        return Response(json.dumps({"status": status}), mimetype='application/json')
+        req = r.get('http://{host}:{port}/feedjobmanager/getStatus/{name}'.format(**command_params, name=feedName))
+        stat = req.json()
+        return Response(json.dumps(stat), mimetype='application/json')
 
 
 def loadSuccess(browser):
