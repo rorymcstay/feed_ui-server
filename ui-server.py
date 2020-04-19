@@ -9,6 +9,7 @@ from feed.service import Client
 from src.main.feedmanager import FeedManager
 from src.main.scheduler import ScheduleManager
 from src.main.tables import TableManager
+from src.main.sampler import Sampler
 
 from feed.settings import *
 
@@ -25,11 +26,11 @@ logging.info("persistence: {}".format(json.dumps(persistence_params, indent=4, s
 logging.info("summarizer: {}".format(json.dumps(summarizer_params, indent=4, sort_keys=True)))
 
 
-Client('commands', **command_params)
 CORS(app)
 FeedManager.register(app )
 ScheduleManager.register(app )
 TableManager.register(app )
+Sampler.register(app)
 
 print(app.url_map)
 

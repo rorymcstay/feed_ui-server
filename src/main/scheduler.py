@@ -12,9 +12,10 @@ from feed.settings import kafka_params, mongo_params
 from flask import request, Response
 from flask_classy import FlaskView, route
 from kafka import KafkaProducer
-
+from feed.logger import getLogger
 from src.main.tables import Serialiser
 
+logging = getLogger(__name__)
 
 class ScheduledCollection:
 
@@ -56,8 +57,9 @@ class ScheduleManager(FlaskView):
 
     @route("scheduleContainer/<string:feedName>", methods=["PUT"])
     def scheduleContainer(self, feedName):
+        logging.info(f'adding job for {feedName} {request.get_json()}')
         job = ScheduledCollection(feedName, **request.get_json())
-        if job.trigger == 'in':
+        if job.trigger == 'date':
             timing = {
                 "run_date": datetime.now() + timedelta(**{job.increment: int(job.increment_size)})
             }
@@ -71,12 +73,15 @@ class ScheduleManager(FlaskView):
 
     @route("addJob/<string:feedName>", methods=["PUT"])
     def addJob(self, feedName):
+        logging.info(f'adding job for {feedName} {request.get_json()}')
         job = ScheduledCollection(feedName, **request.get_json())
         timing = {
-            job.increment_size: job.increment,
+            job.increment: int(job.increment_size),
+        } if job.trigger == 'interval' else {
             "run_date": datetime.now() + timedelta(**{job.increment: int(job.increment_size)})
         }
-        self.scheduler.add_job(self.executor.publishUrl, job.trigger, args=[feedName, job.url], id=job.url, **timing)
+        self.scheduler.add_job(self.executor.publishUrl, job.trigger, args=[feedName, job.url], **timing)
+        return 'ok'
 
     def getStatus(self):
         isRunning = self.scheduler.running

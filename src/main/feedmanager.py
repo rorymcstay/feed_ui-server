@@ -291,6 +291,26 @@ class FeedManager(FlaskView):
         stat = req.json()
         return Response(json.dumps(stat), mimetype='application/json')
 
+    @route('uploadCaptures/<string:name>', methods=['PUT'])
+    def uploadCaptures(self, name):
+        captures = request.get_json()
+        if self.feed_params['captures'].find_one({'name': name}) is None:
+            self.feed_params['captures'].insert({"name": name, "captures": captures})
+        else:
+            self.feed_params['captures'].replace({'name': name}, captures)
+        return 'ok'
+
+    def getCaptures(self, returnType, name):
+        capture = self.feed_params['captures'].find_one({'name': name})
+        if capture is None:
+            return Response(json.dumps([{'captureName':'', 'capture': ''}]), status=200)
+        if returnType == 'list':
+            val = capture.get('captures')
+        if returnType =='map':
+            val = {item.get('captureName'): item.get('capture') for item in capture.get('captures')}
+        return Response(json.dumps(val), status=200)
+
+
 
 def loadSuccess(browser):
     timeMax = time() + feed_params.get('time_out', 15)
