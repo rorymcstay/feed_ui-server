@@ -8,7 +8,9 @@ from apscheduler.jobstores.mongodb import MongoDBJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from docker import client as dockerClient
-from feed.settings import kafka_params, mongo_params
+import requests
+
+from feed.settings import kafka_params, mongo_params, nanny_params
 from flask import request, Response
 from flask_classy import FlaskView, route
 from kafka import KafkaProducer
@@ -38,9 +40,13 @@ class JobExecutor:
 
     def publishUrl(self, feedName, url):
         item = {"url": url, "type": feedName}
-        self.producer.send(topic="worker-queue".format(name=feedName),
+        self.producer.send(topic="worker-queue",
                            value=item,
                            key=bytes(url, 'utf-8'))
+
+    def publishActionChain(self, actionChain):
+        chainParams = requests.get('http://{host}:{port}/actionsmanager/getActionChain/{name}'.format(name=actionChain, **nanny_params)).json()
+        self.producer.send(topic="sample-queue", value=chainParams, key=bytes(chainParams.get('name'), 'utf-8'))
 
 
 class ScheduleManager(FlaskView):
@@ -81,6 +87,18 @@ class ScheduleManager(FlaskView):
             "run_date": datetime.now() + timedelta(**{job.increment: int(job.increment_size)})
         }
         self.scheduler.add_job(self.executor.publishUrl, job.trigger, args=[feedName, job.url], **timing)
+        return 'ok'
+
+    @route("scheduleActionChain/<string:actionChain>", methods=["PUT"])
+    def scheduleActionChain(self, actionChain):
+        logging.info(f'adding job for {actionChain} {request.get_json()}')
+        job = ScheduledCollection(actionChain, **request.get_json())
+        timing = {
+            job.increment: int(job.increment_size),
+        } if job.trigger == 'interval' else {
+            "run_date": datetime.now() + timedelta(**{job.increment: int(job.increment_size)})
+        }
+        self.scheduler.add_job(self.executor.publishActionChain, job.trigger, args=[actionChain], **timing)
         return 'ok'
 
     def getStatus(self):
