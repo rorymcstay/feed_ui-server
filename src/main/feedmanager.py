@@ -19,7 +19,7 @@ from flask_classy import FlaskView, route
 import pymongo
 from pymongo.database import Database
 
-from feed.settings import mongo_params, kafka_params, feed_params, summarizer_params, command_params
+from feed.settings import mongo_params, kafka_params, feed_params, summarizer_params, nanny_params
 
 
 class FeedManager(FlaskView):
@@ -253,7 +253,7 @@ class FeedManager(FlaskView):
                 self.admin.create_topics(queues_to_make)
             except TopicAlreadyExistsError:
                 pass
-            r.get("http://{host}:{port}/feedjobmanager/addFeed/{name}".format(name=name, **command_params))
+            r.get("http://{host}:{port}/runningmanager/addFeed/{name}".format(name=name, **nanny_params))
             logging.info(f'added {name} to job manager')
             return Response(json.dumps({"status": True}), status=200)
 
@@ -287,7 +287,7 @@ class FeedManager(FlaskView):
         :param feedName:
         :return:
         """
-        req = r.get('http://{host}:{port}/feedjobmanager/getStatus/{name}'.format(**command_params, name=feedName))
+        req = r.get('http://{host}:{port}/runningmanager/getStatus/{name}'.format(**nanny_params, name=feedName))
         stat = req.json()
         return Response(json.dumps(stat), mimetype='application/json')
 
