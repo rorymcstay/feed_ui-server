@@ -7,9 +7,9 @@ from flask import Response, request
 from flask_classy import FlaskView, route
 from psycopg2._psycopg import connection, cursor
 from pymongo import MongoClient
-
+import requests
 from feed.settings import database_parameters
-from feed.settings import mongo_params
+from feed.settings import mongo_params, nanny_params
 
 from feed.logger import logger as logging
 
@@ -23,9 +23,17 @@ class TableManager(FlaskView):
         return [table.get("name") for table in self.mongo["table"]["type"].find({})]
 
     def getTableNames(self, feedName):
+        try:
+            actions = requests.get("http://{host}:{port}/actionsmanager/queryActionChain/{name}".format(name=feedName, **nanny_params)).json().get('actions')
+        except:
+            logging.info(f'actionchain not found for feedName=[{feedName}]')
+            actions = []
+        captures = list(map(lambda action: "table_name like '%{}%'".format(action.get('captureName')), filter(lambda action: action.actionType == 'CaptureAction', actions)))
+        if len (captures) == 0:
+            captures.append("table_name like '%{}%'".format(feedName))
         query = f"""
         select table_name from information_schema.tables
-        where table_name like '%{feedName}%'"""
+        where {" or ".join(captures)}"""
 
         c: cursor = self.client.cursor()
         c.execute(query)
