@@ -94,6 +94,8 @@ class ScheduleManager(FlaskView):
         # TODO: Do check on queue here
         logging.info(f'adding job for {actionChain} {request.get_json()}')
         job = ScheduledCollection(actionChain, **request.get_json())
+        if job.increment is '':
+            return Response(json.dumps({'job': job.__dict__(), 'reason': "You must specify increment to be one of 'days', 'seconds', or 'hours'"}), status=400)
         timing = {
             job.increment: int(job.increment_size),
         } if job.trigger == 'interval' else {
