@@ -44,9 +44,9 @@ class JobExecutor:
                            value=item,
                            key=bytes(url, 'utf-8'))
 
-    def publishActionChain(self, actionChain):
+    def publishActionChain(self, actionChain, queue):
         chainParams = requests.get('http://{host}:{port}/actionsmanager/getActionChain/{name}'.format(name=actionChain, **nanny_params)).json()
-        self.producer.send(topic="sample-queue", value=chainParams, key=bytes(chainParams.get('name'), 'utf-8'))
+        self.producer.send(topic=queue, value=chainParams, key=bytes(chainParams.get('name'), 'utf-8'))
 
 
 class ScheduleManager(FlaskView):
@@ -89,8 +89,9 @@ class ScheduleManager(FlaskView):
         self.scheduler.add_job(self.executor.publishUrl, job.trigger, args=[feedName, job.url], **timing)
         return 'ok'
 
-    @route("scheduleActionChain/<string:actionChain>", methods=["PUT"])
-    def scheduleActionChain(self, actionChain):
+    @route("scheduleActionChain/<string:queue>/<string:actionChain>", methods=["PUT"])
+    def scheduleActionChain(self, queue, actionChain):
+        # TODO: Do check on queue here
         logging.info(f'adding job for {actionChain} {request.get_json()}')
         job = ScheduledCollection(actionChain, **request.get_json())
         timing = {
@@ -98,7 +99,7 @@ class ScheduleManager(FlaskView):
         } if job.trigger == 'interval' else {
             "run_date": datetime.now() + timedelta(**{job.increment: int(job.increment_size)})
         }
-        self.scheduler.add_job(self.executor.publishActionChain, job.trigger, args=[actionChain], **timing)
+        self.scheduler.add_job(self.executor.publishActionChain, job.trigger, args=[actionChain, queue], **timing)
         return 'ok'
 
     def getStatus(self):

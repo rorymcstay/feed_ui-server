@@ -205,24 +205,6 @@ class FeedManager(FlaskView):
         data = [param.get("name") for param in c]
         return Response(json.dumps(data), mimetype="application/json")
 
-    def newFeed(self, feedName):
-        """
-        <example>
-            #request: /newFeed/donedeal
-            #response: ok
-        <example/>
-        :param feedName:
-        :return:
-        """
-        port = len(self.feed_ports)
-        self.feed_ports.update({feedName: feed_params['base_port'] + port})
-        c = self.feeds["leader"].find({"name": feedName})
-        if any(val == feedName for val in c):
-            pass
-        else:
-            self.feeds["leader"].insert_one({"name": feedName})
-        return "ok"
-
     def startFeed(self, feedName, mode):
         """
         <example1>
