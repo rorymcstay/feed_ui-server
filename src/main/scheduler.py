@@ -107,7 +107,8 @@ class ScheduleManager(FlaskView):
     def getStatus(self):
         isRunning = self.scheduler.running
         jobs: List[Job] = self.scheduler.get_jobs()
-        payload = {"isRunning": isRunning, "jobs": [{'job_name': job.id,
+        payload = {"isRunning": isRunning, "jobs": [{'job_id': job.id,
+                                                     'job_name': job.name,
                                                      'next_run': job.next_run_time,
                                                      'trigger': "interval" if isinstance(job.trigger,
                                                                                          IntervalTrigger) else "date"}

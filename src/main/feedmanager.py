@@ -152,6 +152,8 @@ class FeedManager(FlaskView):
         :return:
         """
         parameter = self.parameterSchemas.find_one({"name": parameterName})
+        if val is None:
+            return Response(f'no parameter schema found for {parameterName}', status=404)
         val = parameter['value']
         return Response(json.dumps(val), mimetype="application/json")
 
@@ -188,7 +190,8 @@ class FeedManager(FlaskView):
             self.feed_params[collection].replace_one(filter={"name": name}, replacement=value)
             old["name"] = "{}_{}".format(name, datetime.now().strftime("%d%m%Y"))
             old.pop("_id")
-            self.feed_params[collection].insert(old)
+            if os.getenv('PARAM_VERSIONING_ON', False):
+                self.feed_params[collection].insert(old)
         else:
             self.feed_params[collection].insert_one(value)
         return Response("ok", status=200)
