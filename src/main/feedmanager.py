@@ -152,7 +152,7 @@ class FeedManager(FlaskView):
         :return:
         """
         parameter = self.parameterSchemas.find_one({"name": parameterName})
-        if val is None:
+        if parameter is None:
             return Response(f'no parameter schema found for {parameterName}', status=404)
         val = parameter['value']
         return Response(json.dumps(val), mimetype="application/json")
