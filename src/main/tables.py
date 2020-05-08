@@ -11,7 +11,10 @@ import requests
 from feed.settings import database_parameters
 from feed.settings import mongo_params, nanny_params
 
-from feed.logger import logger as logging
+import logging as logger
+
+logging = logger.getLogger(__name__)
+
 
 class TableManager(FlaskView):
     client: connection = psycopg2.connect(**database_parameters)
@@ -23,12 +26,18 @@ class TableManager(FlaskView):
         return [table.get("name") for table in self.mongo["table"]["type"].find({})]
 
     def getTableNames(self, feedName):
+        actions = requests.get("http://{host}:{port}/actionsmanager/queryActionChain/{name}/actions".format(name=feedName, **nanny_params))
         try:
-            actions = requests.get("http://{host}:{port}/actionsmanager/queryActionChain/{name}".format(name=feedName, **nanny_params)).json().get('actions')
+            actions = actions.json()
+            actions = actions.get('actions', [])
         except:
-            logging.info(f'actionchain not found for feedName=[{feedName}]')
+            logging.info(f'actionchain not found for feedName=[{feedName}]. response was data=[{actions.data}], status=[{actions.status}]')
+        if actions is None:
             actions = []
-        captures = list(map(lambda action: "table_name like '%{}%'".format(action.get('captureName')), filter(lambda action: action.actionType == 'CaptureAction', actions)))
+        captureActions = filter(lambda action: action.get('actionType') == 'CaptureAction', actions)
+        if not captureActions:
+            captureActions = []
+        captures = list(map(lambda action: "table_name like '%{}%'".format(action.get('captureName', None)), captureActions))
         if len (captures) == 0:
             captures.append("table_name like '%{}%'".format(feedName))
         query = f"""

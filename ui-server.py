@@ -1,4 +1,5 @@
-from feed.logger import logger as logging
+import logging
+from feed.logger import initialiseSrcLogger
 import os
 from flask import Flask
 from flask_cors import CORS
@@ -25,6 +26,7 @@ logging.info("feed : {}".format(json.dumps(feed_params, indent=4, sort_keys=True
 logging.info("persistence: {}".format(json.dumps(persistence_params, indent=4, sort_keys=True)))
 logging.info("summarizer: {}".format(json.dumps(summarizer_params, indent=4, sort_keys=True)))
 
+initialiseSrcLogger()
 
 CORS(app)
 FeedManager.register(app )
