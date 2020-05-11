@@ -10,7 +10,6 @@ from feed.service import Client
 from src.main.feedmanager import FeedManager
 from src.main.scheduler import ScheduleManager
 from src.main.tables import TableManager
-from src.main.sampler import Sampler
 
 from feed.settings import *
 
@@ -32,7 +31,6 @@ CORS(app)
 FeedManager.register(app )
 ScheduleManager.register(app )
 TableManager.register(app )
-Sampler.register(app)
 
 print(app.url_map)
 
