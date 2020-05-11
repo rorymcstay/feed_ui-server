@@ -37,4 +37,4 @@ Sampler.register(app)
 print(app.url_map)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=os.getenv("FLASK_PORT", 5004))
+    app.run(port=os.getenv("FLASK_PORT", os.getenv("UISERVER_PORT", 5004)), host=os.getenv('UISERVER_HOST'))

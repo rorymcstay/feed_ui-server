@@ -86,8 +86,8 @@ class ScheduleManager(FlaskView):
         } if job.trigger == 'interval' else {
             "run_date": datetime.now() + timedelta(**{job.increment: int(job.increment_size)})
         }
-        self.scheduler.add_job(self.executor.publishUrl, job.trigger, args=[feedName, job.url], **timing)
-        return 'ok'
+        self.scheduler.add_job(self.executor.publishUrl, job.trigger, name=feedName, args=[feedName, job.url], **timing)
+        return Response(json.dumps({'valid': True, 'message': 'Job is scheduled for {datetime.now() + timedelta(**{job.increment: int(job.increment_size)})}'}, mimetype='application/json'))
 
     @route("scheduleActionChain/<string:queue>/<string:actionChain>", methods=["PUT"])
     def scheduleActionChain(self, queue, actionChain):
@@ -95,14 +95,17 @@ class ScheduleManager(FlaskView):
         logging.info(f'adding job for {actionChain} {request.get_json()}')
         job = ScheduledCollection(actionChain, **request.get_json())
         if job.increment is '':
-            return Response(json.dumps({'job': job.__dict__, 'reason': "You must specify increment to be one of 'days', 'seconds', or 'hours'"}), status=400)
+            return Response(json.dumps({'valid': False, 'job': job.__dict__, 'reason': "You must specify increment to be one of 'days', 'seconds', or 'hours'"}), status=200, mimetype='application/json')
         timing = {
             job.increment: int(job.increment_size),
         } if job.trigger == 'interval' else {
             "run_date": datetime.now() + timedelta(**{job.increment: int(job.increment_size)})
         }
-        self.scheduler.add_job(self.executor.publishActionChain, job.trigger, args=[actionChain, queue], **timing)
-        return 'ok'
+        try:
+            self.scheduler.add_job(self.executor.publishActionChain, job.trigger, name=actionChain, args=[actionChain, queue], **timing)
+        except LookupError as ex:
+            return Response(json.dumps({'valid': False, 'reason': f'You must specify a valid trigger. "{job.trigger}" is not.'}), mimetype='application/json')
+        return Response(json.dumps({'valid': True, 'message': f'{datetime.now() + timedelta(**{job.increment: int(job.increment_size)})}'}), mimetype='application/json')
 
     def getStatus(self):
         isRunning = self.scheduler.running

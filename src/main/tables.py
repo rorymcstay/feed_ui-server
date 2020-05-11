@@ -125,7 +125,7 @@ class TableManager(FlaskView):
         #columns = [{"Header": column.name, "accessor": column.name} for column in c.description]
         logging.info(f'returning {len(data)}/{count} results for {tableName}')
         response = {"data": data, "pages": pages}
-        return Response(json.dumps(response, cls=Serialiser))
+        return Response(json.dumps(response, cls=Serialiser), mimetype='application/json')
 
     def getMappingSchema(self):
         form = self.mongo['mapping']['forms'].find_one({"type": "simple_mapping"})
@@ -188,7 +188,7 @@ class TableManager(FlaskView):
         obj = {"name": name, "value": val, "tableName": tableName}
         logging.info(f'inserting mapping {obj} for {name}')
         self.mongo['mapping']['values'].replace_one({"name": name}, obj, upsert=True)
-        return "ok"
+        return Response(json.dumps({'valid': True, 'message': f'Succesfully uploaded mapping for {tableName}'}), mimetype='application/json')
 
 
 class Serialiser(JSONEncoder):
