@@ -51,7 +51,7 @@ class JobExecutor:
 
 class ScheduleManager(FlaskView):
     scheduler = BackgroundScheduler()
-    job_store = MongoDBJobStore(**mongo_params)
+    job_store = MongoDBJobStore(database=os.getenv("CHAIN_DB", 'actionChains'), **mongo_params)
     scheduler.add_jobstore(job_store)
     executor = JobExecutor()
     if len(sys.argv) > 1 and sys.argv[1] == '--clear':

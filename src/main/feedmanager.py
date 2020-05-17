@@ -26,15 +26,15 @@ class FeedManager(FlaskView):
     def __init__(self):
         self.dockerClient = docker.from_env()
         self.mongoClient = pymongo.MongoClient(**mongo_params)
-        self.forms: Database = self.mongoClient[os.getenv("FORM_DATABASE", "forms")]
-        self.feeds: Database = self.mongoClient[os.getenv("PARAMETER_DATABASE", "params")]
-        self.parameter_stats: Database = self.mongoClient[os.getenv("PARAM_STATS_DATABASE", "params_stats")]
+        self.forms: Database = self.mongoClient[os.getenv("CHAIN_DB", "actionChains")]['parameterForms']
+        self.feeds: Database = self.mongoClient[os.getenv("CHAIN_DB", "actionChains")]['actionChainDefinitions']
+        self.parameter_stats: Database = self.mongoClient[os.getenv("CHAIN_DB", "actionChains")]['parameterStats']
         self.parameterSchemas = self.forms['parameterSchemas']
         self.admin = KafkaAdminClient(**kafka_params)
         logging.info(f'bootstrap_servers: {kafka_params.get("bootstrap_servers")} kafka: {json.dumps(kafka_params, indent=4)}')
         self.kafkaClient = KafkaClient(**kafka_params)
         self.feed_params: Database = self.mongoClient[os.getenv("PARAMETER_DATABASE", "params")]
-        self.feed_ports = {name.get("name"): feed_params['base_port']+i for (i, name) in enumerate(self.feeds["leader"].find({}))}
+        self.feed_ports = {name.get("name"): feed_params['base_port']+i for (i, name) in enumerate(self.feeds.find({}))}
 
     def getParameter(self, component, feedName):
         """
@@ -72,36 +72,6 @@ class FeedManager(FlaskView):
             return Response(status=404)
         params.pop("_id")
         return Response(json.dumps(params), mimetype="application/json")
-
-    def getParameterStatus(self, feedName):
-        """
-        Get the number of fails a component parameter value has
-
-        <example1>
-            #request: GET getParameterStatus/donedeal
-
-            #response:
-            {
-                "errors": errors,
-                "name": parameterName
-            }
-        <example1/>
-
-        @
-
-        :param feedName:
-        :return:
-        """
-        c = self.parameterSchemas.find({})
-        payload = []
-        for parameterName in [param.get("name") for param in c]:
-            errors = self.parameter_stats[parameterName].count({"name": feedName})
-            status = {
-                "errors": errors,
-                "name": parameterName
-            }
-            payload.append(status)
-        return Response(json.dumps(payload), mimetype='application/json')
 
     def getParameterTypes(self):
         """
@@ -204,12 +174,13 @@ class FeedManager(FlaskView):
         <example1/>
         :return:
         """
-        c = self.feeds["leader"].find({})
+        c = self.feeds.find({})
         data = [param.get("name") for param in c]
         return Response(json.dumps(data), mimetype="application/json")
 
     def startFeed(self, feedName, mode):
         """
+        # TODO used anymore, clean up ui usage.
         <example1>
              #request: /startFeed/donedeal
              #response: {"status": true}
@@ -218,29 +189,7 @@ class FeedManager(FlaskView):
         :param mode: run mode, one of 'run', 'test', 'single'
         :return:
         """
-        logging.info("starting feed {}".format(feedName))
-        parameterSets = self.feeds.list_collection_names(include_system_collections=False)
-        notSet = []
-        for set in parameterSets:
-            if self.feeds[set].find_one({"name": feedName}) is None:
-                notSet.append(set)
-        if len(notSet):
-            logging.info(f'some parameters not set for {feedName}')
-            payload = {"notSet": notSet, "status": False}
-            return Response(json.dumps(payload), mimetype='application/json')
-        else:
-            try:
-                queues_to_make = []
-                queues_to_make.append(
-                    NewTopic(name="{}-results".format(feedName), num_partitions=1, replication_factor=1))
-                queues_to_make.append(
-                    NewTopic(name="{}-items".format(feedName), num_partitions=1, replication_factor=1))
-                self.admin.create_topics(queues_to_make)
-            except TopicAlreadyExistsError:
-                pass
-            r.get("http://{host}:{port}/runningmanager/addFeed/{name}".format(name=name, **nanny_params))
-            logging.info(f'added {name} to job manager')
-            return Response(json.dumps({"status": True}), status=200)
+        return Response(json.dumps({"status": True}), status=200)
 
     def getSampleData(self, name):
         data = r.get("http://{host}:{port}/resultloader/getSampleData/{name}".format(name=name, **summarizer_params))
@@ -257,10 +206,6 @@ class FeedManager(FlaskView):
         :param feedName:
         :return:
         """
-        feed = self.dockerClient.containers.get(feedName)
-        feed.stop()
-        feed.remove()
-        self.admin.delete_topics(["{}-{}".format(feedName, val) for val in ("items", "results")])
         return "ok"
 
     def feedStatus(self, feedName):
@@ -275,27 +220,6 @@ class FeedManager(FlaskView):
         req = r.get('http://{host}:{port}/runningmanager/getStatus/{name}'.format(**nanny_params, name=feedName))
         stat = req.json()
         return Response(json.dumps(stat), mimetype='application/json')
-
-    @route('uploadCaptures/<string:name>', methods=['PUT'])
-    def uploadCaptures(self, name):
-        captures = request.get_json()
-        if self.feed_params['captures'].find_one({'name': name}) is None:
-            self.feed_params['captures'].insert({"name": name, "captures": captures})
-        else:
-            self.feed_params['captures'].replace({'name': name}, captures)
-        return 'ok'
-
-    def getCaptures(self, returnType, name):
-        capture = self.feed_params['captures'].find_one({'name': name})
-        if capture is None:
-            return Response(json.dumps([{'captureName':'', 'capture': ''}]), status=200)
-        if returnType == 'list':
-            val = capture.get('captures')
-        if returnType =='map':
-            val = {item.get('captureName'): item.get('capture') for item in capture.get('captures')}
-        return Response(json.dumps(val), status=200)
-
-
 
 def loadSuccess(browser):
     timeMax = time() + feed_params.get('time_out', 15)

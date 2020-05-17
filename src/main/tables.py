@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime
 from json import JSONEncoder
 
@@ -19,11 +20,9 @@ logging = logger.getLogger(__name__)
 class TableManager(FlaskView):
     client: connection = psycopg2.connect(**database_parameters)
     mongo = MongoClient(**mongo_params)
+    mappings = mongo[os.getenv('CHAIN_DB', 'actionChains')]['mappings']
     client.autocommit = True
     numberFields = {}
-
-    def _getTableTypes(self):
-        return [table.get("name") for table in self.mongo["table"]["type"].find({})]
 
     def getTableNames(self, feedName):
         actions = requests.get("http://{host}:{port}/actionsmanager/queryActionChain/{name}/actions".format(name=feedName, **nanny_params))
@@ -127,10 +126,6 @@ class TableManager(FlaskView):
         response = {"data": data, "pages": pages}
         return Response(json.dumps(response, cls=Serialiser), mimetype='application/json')
 
-    def getMappingSchema(self):
-        form = self.mongo['mapping']['forms'].find_one({"type": "simple_mapping"})
-        return Response(json.dumps(form), mimetype='application/json')
-
     def getMappingValue(self, mapType, name):
         """
         return the mapping to caller
@@ -139,7 +134,7 @@ class TableManager(FlaskView):
         :param: name, name of the feed
         """
 
-        val = self.mongo['mapping']['values'].find_one({"name": name})
+        val = self.mappings.find_one({"name": name})
         if val is not None:
             logging.debug(f'Have mapping for {name}')
             val = val.get('value')
@@ -187,7 +182,7 @@ class TableManager(FlaskView):
 
         obj = {"name": name, "value": val, "tableName": tableName}
         logging.info(f'inserting mapping {obj} for {name}')
-        self.mongo['mapping']['values'].replace_one({"name": name}, obj, upsert=True)
+        self.mappings.replace_one({"name": name}, obj, upsert=True)
         return Response(json.dumps({'valid': True, 'message': f'Succesfully uploaded mapping for {tableName}'}), mimetype='application/json')
 
 
