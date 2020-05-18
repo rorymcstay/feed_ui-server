@@ -8,8 +8,6 @@ phases:
       - git config --global credential.UseHttpPath true 
   pre_build:
     commands:
-      - echo logging into ecr
-      - $(aws ecr get-login --no-include-email --region us-west-2);_
       - env
       - echo running tests file
       - $CODEBUILD_SRC_DIR_platform/run-unit-tests.sh 
