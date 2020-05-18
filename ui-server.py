@@ -35,4 +35,5 @@ TableManager.register(app )
 print(app.url_map)
 
 if __name__ == '__main__':
+    logging.info("\n".join([f'{key}={os.environ[key]}' for key in os.environ]))
     app.run(port=os.getenv("FLASK_PORT", os.getenv("UISERVER_PORT", 5004)), host=os.getenv('UISERVER_HOST'))

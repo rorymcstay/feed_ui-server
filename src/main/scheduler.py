@@ -52,14 +52,16 @@ class JobExecutor:
 
 class ScheduleManager(FlaskView):
     scheduler = BackgroundScheduler()
-    job_store = MongoDBJobStore(database=os.getenv("CHAIN_DB", 'actionChains'), **mongo_params)
+    job_store = MongoDBJobStore(database=os.getenv("CHAIN_DB", 'actionChains'), collection='client_scheduler_jobs', **mongo_params)
     scheduler.add_jobstore(job_store)
     executor = JobExecutor()
     if len(sys.argv) > 1 and sys.argv[1] == '--clear':
         scheduler.remove_all_jobs()
     scheduler.start()
     """
-    If you schedule jobs in a persistent job store during your application’s initialization, you MUST define an explicit ID for the job and use replace_existing=True or you will get a new copy of the job every time your application restarts!Tip
+    If you schedule jobs in a persistent job store during your application’s initialization, you
+    MUST define an explicit ID for the job and use replace_existing=True or you will get a new copy
+    of the job every time your application restarts!Tip
     """
 
     @route("scheduleContainer/<string:feedName>", methods=["PUT"])
