@@ -1,4 +1,4 @@
-from feed.testinterfaces import MongoTestInterface
+from feed.testinterfaces import MongoTestInterface, KafkaTestInterface
 import logging
 import time
 import unittest
@@ -17,9 +17,24 @@ tblLogger = logging.getLogger('src')
 tblLogger.addHandler(sh)
 tblLogger.setLevel(logging.DEBUG)
 
-class TestSchedulerManager(MongoTestInterface):
+
+class TestSchedulerManager(MongoTestInterface, KafkaTestInterface):
+
+    @classmethod
+    def setUpClass(cls):
+        super(KafkaTestInterface, cls).setUpClass()
+        super(MongoTestInterface, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(KafkaTestInterface, cls).tearDownClass(cls)
+        super(MongoTestInterface, cls).tearDownClass(cls)
+
     def setUp(cls):
         cls.scheduleManager = ScheduleManager()
+
     # TODO need to mock requests object
     #def test_scheduleActionChain(ScheduleManager):
     #    cls.scheduleManager.scheduleActionChain('leader-route',
+if __name__ == '__main__':
+    unittest.main()

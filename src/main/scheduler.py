@@ -32,8 +32,9 @@ class ScheduledCollection:
 
 
 class JobExecutor:
-    docker_client = dockerClient.from_env()
-    producer = KafkaProducer(**kafka_params, value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+    def __init__ (self):
+        self.docker_client = dockerClient.from_env()
+        self.producer = KafkaProducer(**kafka_params, value_serializer=lambda v: json.dumps(v).encode('utf-8'))
 
     def startContainer(self, feedName):
         container = self.docker_client.containers.get(feedName)
@@ -51,18 +52,19 @@ class JobExecutor:
 
 
 class ScheduleManager(FlaskView):
-    scheduler = BackgroundScheduler()
-    job_store = MongoDBJobStore(database=os.getenv("CHAIN_DB", 'actionChains'), collection='client_scheduler_jobs', **mongo_params)
-    scheduler.add_jobstore(job_store)
-    executor = JobExecutor()
-    if len(sys.argv) > 1 and sys.argv[1] == '--clear':
-        scheduler.remove_all_jobs()
-    scheduler.start()
-    """
-    If you schedule jobs in a persistent job store during your application’s initialization, you
-    MUST define an explicit ID for the job and use replace_existing=True or you will get a new copy
-    of the job every time your application restarts!Tip
-    """
+    def __init__(self):
+        self.scheduler = BackgroundScheduler()
+        self.job_store = MongoDBJobStore(database=os.getenv("CHAIN_DB", 'actionChains'), collection='client_scheduler_jobs', **mongo_params)
+        self.scheduler.add_jobstore(job_store)
+        self.executor = JobExecutor()
+        if len(sys.argv) > 1 and sys.argv[1] == '--clear':
+            self.scheduler.remove_all_jobs()
+        self.scheduler.start()
+        """
+        If you schedule jobs in a persistent job store during your application’s initialization, you
+        MUST define an explicit ID for the job and use replace_existing=True or you will get a new copy
+        of the job every time your application restarts!Tip
+        """
 
     @route("scheduleContainer/<string:feedName>", methods=["PUT"])
     def scheduleContainer(self, feedName):

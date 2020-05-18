@@ -18,11 +18,13 @@ logging = logger.getLogger(__name__)
 
 
 class TableManager(FlaskView):
-    client: connection = psycopg2.connect(**database_parameters)
-    mongo = MongoClient(**mongo_params)
-    mappings = mongo[os.getenv('CHAIN_DB', 'actionChains')]['mappings']
-    client.autocommit = True
-    numberFields = {}
+
+    def __init__(self):
+        self.client: connection = psycopg2.connect(**database_parameters)
+        self.mongo = MongoClient(**mongo_params)
+        self.mappings = self.mongo[os.getenv('CHAIN_DB', 'actionChains')]['mappings']
+        self.client.autocommit = True
+        self.numberFields = {}
 
     def getTableNames(self, feedName):
         actions = requests.get("http://{host}:{port}/actionsmanager/queryActionChain/{name}/actions".format(name=feedName, **nanny_params))
