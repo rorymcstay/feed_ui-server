@@ -41,13 +41,13 @@ class JobExecutor:
 
     def publishUrl(self, feedName, url):
         item = {"url": url, "type": feedName}
-        self.producer.send(topic="worker-queue",
+        self.producer.send(topic=f'{os.getenv("KAFKA_TOPIC_PREFIX", "u")}-worker-queue',
                            value=item,
                            key=bytes(url, 'utf-8'))
 
     def publishActionChain(self, actionChain, queue):
         chainParams = requests.get('http://{host}:{port}/actionsmanager/getActionChain/{name}'.format(name=actionChain, **nanny_params)).json()
-        self.producer.send(topic=queue, value=chainParams, key=bytes(chainParams.get('name'), 'utf-8'))
+        self.producer.send(topic=f'{os.getenv("KAFKA_TOPIC_PREFIX", "u")}-{queue}', value=chainParams, key=bytes(chainParams.get('name'), 'utf-8'))
 
 
 class ScheduleManager(FlaskView):
