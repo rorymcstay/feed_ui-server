@@ -8,7 +8,7 @@ import docker
 from src.main.scheduler import ScheduleManager
 
 
-sh = logging.FileHandler('/home/rory/app/feed/tmp/logs/ui-server.tables.log')
+sh = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s -%(message)s |%(filename)s:%(lineno)d')
 
 sh.setLevel(logging.DEBUG)
