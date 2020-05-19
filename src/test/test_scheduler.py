@@ -4,6 +4,7 @@ import time
 import unittest
 import os
 import docker
+from feed.actionchains import ActionChain
 
 from src.main.scheduler import ScheduleManager
 
@@ -32,6 +33,9 @@ class TestSchedulerManager(MongoTestInterface, KafkaTestInterface):
 
     def setUp(cls):
         cls.scheduleManager = ScheduleManager()
+
+    def test_scheduleActionChain(self):
+        self.scheduleManager.scheduleActionChain('worker-queue', ActionChain(name='DoneDeal', actions=[], startUrl='test'))
 
     # TODO need to mock requests object
     #def test_scheduleActionChain(ScheduleManager):

@@ -55,7 +55,7 @@ class ScheduleManager(FlaskView):
     def __init__(self):
         self.scheduler = BackgroundScheduler()
         self.job_store = MongoDBJobStore(database=os.getenv("CHAIN_DB", 'actionChains'), collection='client_scheduler_jobs', **mongo_params)
-        self.scheduler.add_jobstore(job_store)
+        self.scheduler.add_jobstore(self.job_store)
         self.executor = JobExecutor()
         if len(sys.argv) > 1 and sys.argv[1] == '--clear':
             self.scheduler.remove_all_jobs()
