@@ -28,8 +28,8 @@ class TestSchedulerManager(MongoTestInterface, KafkaTestInterface):
 
     @classmethod
     def tearDownClass(cls):
-        super(KafkaTestInterface, cls).tearDownClass(cls)
-        super(MongoTestInterface, cls).tearDownClass(cls)
+        super(KafkaTestInterface, cls).tearDownClass()
+        super(MongoTestInterface, cls).tearDownClass()
 
     def setUp(cls):
         cls.scheduleManager = ScheduleManager()
