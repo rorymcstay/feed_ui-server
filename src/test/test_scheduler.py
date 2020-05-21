@@ -1,4 +1,4 @@
-from feed.testinterfaces import MongoTestInterface, KafkaTestInterface
+from feed.testinterfaces import MongoTestInterface, KafkaTestInterface, PostgresTestInterface
 import logging
 import time
 import unittest
@@ -19,23 +19,35 @@ tblLogger.addHandler(sh)
 tblLogger.setLevel(logging.DEBUG)
 
 
-class TestSchedulerManager(MongoTestInterface, KafkaTestInterface):
+class TestSchedulerManager(MongoTestInterface, KafkaTestInterface, PostgresTestInterface):
 
     @classmethod
     def setUpClass(cls):
-        super(KafkaTestInterface, cls).setUpClass()
-        super(MongoTestInterface, cls).setUpClass()
+        os.environ['KAFKA_ADDRESS'] = 'test_kafka:29092'
+        MongoTestInterface.createMongo()
+        KafkaTestInterface.createKafka()
+        PostgresTestInterface.createPostgres()
+
+
+        time.sleep(10)
 
     @classmethod
     def tearDownClass(cls):
-        super(KafkaTestInterface, cls).tearDownClass()
-        super(MongoTestInterface, cls).tearDownClass()
+        KafkaTestInterface.killKafka()
+        MongoTestInterface.killMongo()
+        PostgresTestInterface.killPostgres()
 
     def setUp(cls):
+        print('setting up class')
+        from src.main.app import app
+        cls.app = app
         cls.scheduleManager = ScheduleManager()
 
     def test_scheduleActionChain(self):
-        self.scheduleManager.scheduleActionChain('worker-queue', ActionChain(name='DoneDeal', actions=[], startUrl='test'))
+        example_request = dict(url='test', trigger='interval', increment='days', increment_size=5, time_out=1) # increment_size and increment are unclear
+        with self.app.test_request_context(json=example_request):
+            self.scheduleManager.scheduleActionChain('worker-queue', 'test')
+
 
     # TODO need to mock requests object
     #def test_scheduleActionChain(ScheduleManager):

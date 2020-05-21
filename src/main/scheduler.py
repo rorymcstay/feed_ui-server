@@ -33,19 +33,9 @@ class ScheduledCollection:
 
 class JobExecutor:
     def __init__ (self):
-        self.docker_client = dockerClient.from_env()
         self.producer = KafkaProducer(**kafka_params, value_serializer=lambda v: json.dumps(v).encode('utf-8'))
 
-    def startContainer(self, feedName):
-        container = self.docker_client.containers.get(feedName)
-        container.start()
-
-    def publishUrl(self, feedName, url):
-        item = {"url": url, "type": feedName}
-        self.producer.send(topic=f'{os.getenv("KAFKA_TOPIC_PREFIX", "u")}-worker-queue',
-                           value=item,
-                           key=bytes(url, 'utf-8'))
-
+    @classmethod
     def publishActionChain(self, actionChain, queue):
         chainParams = requests.get('http://{host}:{port}/actionsmanager/getActionChain/{name}'.format(name=actionChain, **nanny_params)).json()
         self.producer.send(topic=f'{os.getenv("KAFKA_TOPIC_PREFIX", "u")}-{queue}', value=chainParams, key=bytes(chainParams.get('name'), 'utf-8'))
@@ -65,34 +55,6 @@ class ScheduleManager(FlaskView):
         MUST define an explicit ID for the job and use replace_existing=True or you will get a new copy
         of the job every time your application restarts!Tip
         """
-
-    @route("scheduleContainer/<string:feedName>", methods=["PUT"])
-    def scheduleContainer(self, feedName):
-        logging.info(f'adding job for {feedName} {request.get_json()}')
-        job = ScheduledCollection(feedName, **request.get_json())
-        if job.trigger == 'date':
-            timing = {
-                "run_date": datetime.now() + timedelta(**{job.increment: int(job.increment_size)})
-            }
-        else:
-            timing = {
-                job.increment: int(job.increment_size),
-            }
-        self.scheduler.add_job(self.executor.startContainer, job.trigger, args=[feedName], id=feedName,
-                               replace_existing=True, **timing)
-        return 'ok'
-
-    @route("addJob/<string:feedName>", methods=["PUT"])
-    def addJob(self, feedName):
-        logging.info(f'adding job for {feedName} {request.get_json()}')
-        job = ScheduledCollection(feedName, **request.get_json())
-        timing = {
-            job.increment: int(job.increment_size),
-        } if job.trigger == 'interval' else {
-            "run_date": datetime.now() + timedelta(**{job.increment: int(job.increment_size)})
-        }
-        self.scheduler.add_job(self.executor.publishUrl, job.trigger, name=feedName, args=[feedName, job.url], **timing)
-        return Response(json.dumps({'valid': True, 'message': 'Job is scheduled for {datetime.now() + timedelta(**{job.increment: int(job.increment_size)})}'}, mimetype='application/json'))
 
     @route("scheduleActionChain/<string:queue>/<string:actionChain>", methods=["PUT"])
     def scheduleActionChain(self, queue, actionChain):

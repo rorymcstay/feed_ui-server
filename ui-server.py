@@ -1,17 +1,9 @@
 import logging
 from logging.config import dictConfig
 import os
-from flask import Flask
-from flask_cors import CORS
 import json
-
-from feed.service import Client
-
-from src.main.feedmanager import FeedManager
-from src.main.scheduler import ScheduleManager
-from src.main.tables import TableManager
-
 from feed.settings import *
+from src.main.app import app
 
 if __name__ == '__main__':
     dictConfig({
@@ -30,23 +22,14 @@ if __name__ == '__main__':
         }
     })
 
-    logging.info("\n".join([f'{key}={os.environ[key]}' for key in os.environ]))
-    app = Flask(__name__)
-
-
-    CORS(app)
-
-    FeedManager.register(app )
-    ScheduleManager.register(app )
-    TableManager.register(app )
     logging.info("####### Environment #######")
+    logging.info("\n".join([f'{key}={os.environ[key]}' for key in os.environ]))
     logging.info("mongo : {}".format(json.dumps(mongo_params, indent=4, sort_keys=True)))
     logging.info("kafka : {}".format(json.dumps(kafka_params, indent=4, sort_keys=True)))
     logging.info("database: {}".format(json.dumps(database_parameters, indent=4, sort_keys=True)))
     logging.info("feed : {}".format(json.dumps(feed_params, indent=4, sort_keys=True)))
     logging.info("persistence: {}".format(json.dumps(persistence_params, indent=4, sort_keys=True)))
     logging.info("summarizer: {}".format(json.dumps(summarizer_params, indent=4, sort_keys=True)))
+    logging.info(app.url_map)
 
-
-    logging.debug(app.url_map)
     app.run(port=os.getenv("FLASK_PORT", os.getenv("UISERVER_PORT", 5004)), host=os.getenv('UISERVER_HOST'))
