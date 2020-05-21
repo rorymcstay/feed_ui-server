@@ -24,15 +24,15 @@ class TestTableManager(NannyMock, PostgresTestInterface, MongoTestInterface):
 
     @classmethod
     def setUpClass(cls):
-        cls.createMongo()
         cls.createPostgres()
-        cls.createNanny()
+        #cls.createNanny()
+        cls.createMongo()
         print('Initialised containers')
-        time.sleep(4)
+        #time.sleep(4)
 
     @classmethod
     def tearDownClass(cls):
-        cls.killNanny()
+        #cls.killNanny()
         cls.killMongo()
         cls.killPostgres()
 

@@ -24,12 +24,9 @@ class TestSchedulerManager(MongoTestInterface, KafkaTestInterface, PostgresTestI
     @classmethod
     def setUpClass(cls):
         os.environ['KAFKA_ADDRESS'] = 'test_kafka:29092'
-        MongoTestInterface.createMongo()
         KafkaTestInterface.createKafka()
         PostgresTestInterface.createPostgres()
-
-
-        time.sleep(10)
+        MongoTestInterface.createMongo()
 
     @classmethod
     def tearDownClass(cls):
