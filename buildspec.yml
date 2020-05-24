@@ -10,7 +10,7 @@ phases:
     commands:
       - env
       - echo running tests file
-      - $CODEBUILD_SRC_DIR_platform/scripts/run-unit-tests.sh 
+      - $CODEBUILD_SRC_DIR_platform/scripts/run-unit-tests.sh --mongo --postgres
 
   build:
     commands:
