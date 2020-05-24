@@ -38,7 +38,9 @@ class JobExecutor:
     @classmethod
     def publishActionChain(self, actionChain, queue):
         chainParams = requests.get('http://{host}:{port}/actionsmanager/getActionChain/{name}'.format(name=actionChain, **nanny_params)).json()
-        self.producer.send(topic=f'{os.getenv("KAFKA_TOPIC_PREFIX", "u")}-{queue}', value=chainParams, key=bytes(chainParams.get('name'), 'utf-8'))
+        topic = f'{os.getenv("KAFKA_TOPIC_PREFIX", "u")}-{queue}'
+        logging.info(f'publishing {actionChain} to {topic}')
+        self.producer.send(topic=topic, value=chainParams, key=bytes(chainParams.get('name'), 'utf-8'))
 
 
 class ScheduleManager(FlaskView):
