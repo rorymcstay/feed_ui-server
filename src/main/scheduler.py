@@ -15,10 +15,9 @@ from feed.settings import kafka_params, mongo_params, nanny_params
 from flask import request, Response
 from flask_classy import FlaskView, route
 from kafka import KafkaProducer
-from feed.logger import getLogger
 from src.main.tables import Serialiser
+import logging
 
-logging = getLogger(__name__)
 
 class ScheduledCollection:
 
@@ -32,8 +31,7 @@ class ScheduledCollection:
 
 
 class JobExecutor:
-    def __init__ (self):
-        self.producer = KafkaProducer(**kafka_params, value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+    producer = KafkaProducer(**kafka_params, value_serializer=lambda v: json.dumps(v).encode('utf-8'))
 
     @classmethod
     def publishActionChain(self, actionChain, queue):
@@ -74,7 +72,7 @@ class ScheduleManager(FlaskView):
             self.scheduler.add_job(self.executor.publishActionChain, job.trigger, name=actionChain, args=[actionChain, queue], **timing)
         except LookupError as ex:
             return Response(json.dumps({'valid': False, 'reason': f'You must specify a valid trigger. "{job.trigger}" is not.'}), mimetype='application/json')
-        return Response(json.dumps({'valid': True, 'message': f'{datetime.now() + timedelta(**{job.increment: int(job.increment_size)})}'}), mimetype='application/json')
+        return Response(json.dumps({'valid': True, 'message': f'{actionChain}: {datetime.now() + timedelta(**{job.increment: int(job.increment_size)})}'}), mimetype='application/json')
 
     def getStatus(self):
         isRunning = self.scheduler.running

@@ -3,7 +3,7 @@ from logging.config import dictConfig
 import os
 import json
 from feed.settings import *
-from src.main.app import app
+
 
 if __name__ == '__main__':
     dictConfig({
@@ -30,6 +30,7 @@ if __name__ == '__main__':
     logging.info("feed : {}".format(json.dumps(feed_params, indent=4, sort_keys=True)))
     logging.info("persistence: {}".format(json.dumps(persistence_params, indent=4, sort_keys=True)))
     logging.info("summarizer: {}".format(json.dumps(summarizer_params, indent=4, sort_keys=True)))
-    logging.info(app.url_map)
 
+    from src.main.app import app
+    logging.info(app.url_map)
     app.run(port=os.getenv("FLASK_PORT", os.getenv("UISERVER_PORT", 5004)), host=os.getenv('UISERVER_HOST'))
