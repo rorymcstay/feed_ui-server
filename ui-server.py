@@ -3,24 +3,11 @@ from logging.config import dictConfig
 import os
 import json
 from feed.settings import *
+from feed.settings import logger_settings_dict
 
 
 if __name__ == '__main__':
-    dictConfig({
-        'version': 1,
-        'formatters': {'default': {
-            'format': '[%(asctime)s]%(thread)d: %(module)s - %(levelname)s - %(message)s',
-        }},
-        'handlers': {'wsgi': {
-            'class': 'logging.StreamHandler',
-            'stream': 'ext://flask.logging.wsgi_errors_stream',
-            'formatter': 'default'
-        }},
-        'root': {
-            'level': os.getenv("LOG_LEVEL", "INFO"),
-            'handlers': ['wsgi']
-        }
-    })
+    dictConfig(logger_settings_dict)
 
     logging.info("####### Environment #######")
     logging.info("\n".join([f'{key}={os.environ[key]}' for key in os.environ]))
