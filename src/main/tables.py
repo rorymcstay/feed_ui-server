@@ -160,6 +160,11 @@ class TableManager(FlaskView):
         """
         return {col.get("staging_column_name"): col.get("final_column_name") for col in mapping}
 
+    def getCaptureNames(self, actionChainName):
+        d = requests.get('http://{host}:{port}/actionsmanager/queryActionChain/{actionChainName}/actions')
+        d.json().get('actions')
+
+
     @route('/uploadMapping/<string:name>', methods=['PUT'])
     def uploadMapping(self, name):
         """
@@ -182,9 +187,9 @@ class TableManager(FlaskView):
             logging.info(f'uploading a map type mapping')
             val["mapping"] = self._make_mapping(val.get("mapping"))
 
-        obj = {"name": name, "value": val, "tableName": tableName}
+        obj = {"name": name, "value": val, "tableName": tableName, 'userID': session.userID}
         logging.info(f'inserting mapping {obj} for {name}')
-        self.mappings.replace_one({"name": name}, obj, upsert=True)
+        self.mappings.replace_one({"name": name, 'userID': session.userID}, obj, upsert=True)
         return Response(json.dumps({'valid': True, 'message': f'Succesfully uploaded mapping for {tableName}'}), mimetype='application/json')
 
 

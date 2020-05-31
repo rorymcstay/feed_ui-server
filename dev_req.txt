@@ -8,3 +8,4 @@ flask-cors
 kafka-python
 docker
 psycopg2
+python-jose

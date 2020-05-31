@@ -13,7 +13,7 @@ import json
 import os
 import requests as r
 
-from flask import Response, request
+from flask import Response, request, session
 from flask_classy import FlaskView, route
 
 import pymongo
@@ -28,13 +28,11 @@ class FeedManager(FlaskView):
         self.mongoClient = pymongo.MongoClient(**mongo_params)
         self.forms: Database = self.mongoClient[os.getenv("CHAIN_DB", "actionChains")]['parameterForms']
         self.feeds: Database = self.mongoClient[os.getenv("CHAIN_DB", "actionChains")]['actionChainDefinitions']
-        self.parameter_stats: Database = self.mongoClient[os.getenv("CHAIN_DB", "actionChains")]['parameterStats']
         self.parameterSchemas = self.forms['parameterSchemas']
         self.admin = KafkaAdminClient(**kafka_params)
         logging.info(f'bootstrap_servers: {kafka_params.get("bootstrap_servers")} kafka: {json.dumps(kafka_params, indent=4)}')
         self.kafkaClient = KafkaClient(**kafka_params)
         self.feed_params: Database = self.mongoClient[os.getenv("PARAMETER_DATABASE", "params")]
-        self.feed_ports = {name.get("name"): feed_params['base_port']+i for (i, name) in enumerate(self.feeds.find({}))}
 
     def getParameter(self, component, feedName):
         """
@@ -86,6 +84,40 @@ class FeedManager(FlaskView):
 
         data = [param.get("name") for param in c]
         return Response(json.dumps(data), mimetype="application/json")
+
+    def refreshHistory(self, name):
+        session["router"].delete(f'/routingcontroller/clearHistory/{name}')
+        return 'ok'
+
+    @route('setActionChain/', methods=['PUT'])
+    def setActionChain(self):
+        resp = session["nanny"].put('/actionsmanager/setActionChain/', resp=True)
+        return Response(json.dumps(resp), mimetype='application/json')
+
+    @route('clearActionErrorReports/<string:actionChainName>', methods=['DELETE'])
+    def clearActionErrorReports(self, actionChainName):
+        session["nanny"].delete(f'/actionsmanager/clearActionErrorReports/{actionChainName}')
+        return 'ok'
+
+    def findActionErrorReports(self, actionChainName):
+        reports = session["nanny"].get(f'/actionsmanager/findActionErrorReports/{actionChainName}', resp=True)
+        return Response(json.dumps(reports), mimetype='application/json')
+
+    def disableFeed(self, name):
+        session["nanny"].get(f'/runningmanager/disableFeed/{name}')
+        return 'ok'
+
+    def getActionChains(self):
+        chains = session["nanny"].get(f'/actionsmanager/getUserActionChains/', resp=True, error=[])
+        return Response(json.dumps(chains), mimetype='application/json')
+
+    def getActionChain(self, name):
+        chains = session["nanny"].get(f'/actionsmanager/getActionChain/{name}', resp=True, error=[])
+        return Response(json.dumps(chains), mimetype='application/json')
+
+    def getStatus(self, name):
+        status = session["nanny"].get(f'/runningmanager/getStatus/{name}', resp=True, error=None)
+        return Response(json.dumps(status), mimetype='application/json')
 
     def getParameterSchema(self, parameterName):
         """

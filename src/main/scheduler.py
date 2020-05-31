@@ -12,18 +12,18 @@ from docker import client as dockerClient
 import requests
 
 from feed.settings import kafka_params, mongo_params, nanny_params
-from flask import request, Response
+from flask import request, Response, session
 from flask_classy import FlaskView, route
 from kafka import KafkaProducer
 from src.main.tables import Serialiser
 import logging
+from feed.service import Client
 
 
-class ScheduledCollection:
+class ScheduledActionChain:
 
-    def __init__(self, feedName, **kwargs):
-        self.feedName = feedName
-        self.url = kwargs.get("url")
+    def __init__(self, name, **kwargs):
+        self.name = name
         self.trigger = kwargs.get("trigger")
         self.increment = kwargs.get("increment")
         self.increment_size = kwargs.get("increment_size")
@@ -31,11 +31,29 @@ class ScheduledCollection:
 
 
 class JobExecutor:
-    producer = KafkaProducer(**kafka_params, value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+    __instance = None
+    def __init__(self):
+        if self.__instance is not None:
+            logging.warning(f'Will not make another job executor')
+            pass
+        else:
+            self.nanny = Client('nanny', check_health=False, **nanny_params)
+            self.producer = KafkaProducer(**kafka_params, value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+            self.__instance = self
+
+    @staticmethod
+    def getInstance():
+        if JobExecutor.__instance:
+            return JobExecutor.__instance
+        else:
+            logging.info(f'Creating new job executor instance')
+            return JobExecutor()
+
 
     @classmethod
-    def publishActionChain(self, actionChain, queue):
-        chainParams = requests.get('http://{host}:{port}/actionsmanager/getActionChain/{name}'.format(name=actionChain, **nanny_params)).json()
+    def publishActionChain(self, actionChain, queue, userID):
+        self.nanny.behalf = userID
+        chainParams = session['nanny'].get(f'/actionsmanager/getActionChain/{name}', resp=True)
         topic = f'{os.getenv("KAFKA_TOPIC_PREFIX", "u")}-{queue}'
         logging.info(f'publishing {actionChain} to {topic}')
         self.producer.send(topic=topic, value=chainParams, key=bytes(chainParams.get('name'), 'utf-8'))
@@ -46,7 +64,7 @@ class ScheduleManager(FlaskView):
         self.scheduler = BackgroundScheduler()
         self.job_store = MongoDBJobStore(database=os.getenv("CHAIN_DB", 'actionChains'), collection='client_scheduler_jobs', **mongo_params)
         self.scheduler.add_jobstore(self.job_store)
-        self.executor = JobExecutor()
+        self.executor = JobExecutor.getInstance()
         if len(sys.argv) > 1 and sys.argv[1] == '--clear':
             self.scheduler.remove_all_jobs()
         self.scheduler.start()
@@ -60,7 +78,7 @@ class ScheduleManager(FlaskView):
     def scheduleActionChain(self, queue, actionChain):
         # TODO: Do check on queue here
         logging.info(f'adding job for {actionChain} {request.get_json()}')
-        job = ScheduledCollection(actionChain, **request.get_json())
+        job = ScheduledActionChain(actionChain, **request.get_json())
         if job.increment is '':
             return Response(json.dumps({'valid': False, 'job': job.__dict__, 'reason': "You must specify increment to be one of 'days', 'seconds', or 'hours'"}), status=200, mimetype='application/json')
         timing = {
@@ -69,7 +87,7 @@ class ScheduleManager(FlaskView):
             "run_date": datetime.now() + timedelta(**{job.increment: int(job.increment_size)})
         }
         try:
-            self.scheduler.add_job(self.executor.publishActionChain, job.trigger, name=actionChain, args=[actionChain, queue], **timing)
+            self.scheduler.add_job(self.executor.publishActionChain, job.trigger, name=f'{actionChain}:{session.userID}', args=[actionChain, queue, session.userID], **timing)
         except LookupError as ex:
             return Response(json.dumps({'valid': False, 'reason': f'You must specify a valid trigger. "{job.trigger}" is not.'}), mimetype='application/json')
         return Response(json.dumps({'valid': True, 'message': f'{actionChain}: {datetime.now() + timedelta(**{job.increment: int(job.increment_size)})}'}), mimetype='application/json')

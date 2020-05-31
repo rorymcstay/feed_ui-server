@@ -1,4 +1,4 @@
-feed-utils==0.6.3
+feed-utils==0.6.4
 pymongo
 apscheduler
 requests
@@ -9,3 +9,4 @@ kafka-python
 docker
 psycopg2
 bs4
+pyjwt
