@@ -1,7 +1,7 @@
 from flask_classy import FlaskView, route
 import os
 from bs4 import BeautifulSoup
-from feed.settings import nanny_params, ui_server_params
+from feed.settings import nanny_params
 from flask import session, Response, request
 import json
 import requests as r

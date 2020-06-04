@@ -1,4 +1,5 @@
 feed-utils==0.6.4
+pandas
 pymongo
 apscheduler
 requests
@@ -7,6 +8,6 @@ flask-classy
 flask-cors
 kafka-python
 docker
-psycopg2
+psycopg2-binary
 bs4
-pyjwt
+python-jose[cryptography]

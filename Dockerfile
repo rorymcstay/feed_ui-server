@@ -1,4 +1,4 @@
-FROM nickgryg/alpine-pandas:latest
+FROM python:3.8.3-slim
 
 RUN mkdir -p /home
 
@@ -8,11 +8,11 @@ WORKDIR /home
 ADD ./requirements.txt /home/requirements.txt
 
 
-RUN apk update
-RUN apk add --virtual build-deps gcc python3-dev musl-dev
-RUN apk add postgresql-dev
+#RUN apk update
+#RUN apk add --virtual build-deps gcc python3-dev musl-dev
+#RUN apk add postgresql-dev
 
-RUN apk del build-deps
+#RUN apk del build-deps
 
 RUN pip install --upgrade pip
 # Installing packages

@@ -3,7 +3,6 @@ from datetime import datetime
 
 from time import time
 
-import docker
 from docker.errors import APIError
 from docker.models.containers import Container
 from kafka.admin import KafkaAdminClient, NewTopic
@@ -19,17 +18,18 @@ from flask_classy import FlaskView, route
 import pymongo
 from pymongo.database import Database
 
-from feed.settings import mongo_params, kafka_params, feed_params, summarizer_params, nanny_params
+from feed.settings import mongo_params, kafka_params, feed_params, nanny_params
 
 
 class FeedManager(FlaskView):
     def __init__(self):
-        self.dockerClient = docker.from_env()
         self.mongoClient = pymongo.MongoClient(**mongo_params)
         self.forms: Database = self.mongoClient[os.getenv("CHAIN_DB", "actionChains")]['parameterForms']
         self.feeds: Database = self.mongoClient[os.getenv("CHAIN_DB", "actionChains")]['actionChainDefinitions']
         self.parameterSchemas = self.forms['parameterSchemas']
         self.admin = KafkaAdminClient(**kafka_params)
+        # TODO This is called multiple times, should make it so that it is only once. 
+        # Take this as the beginnings of the kafka interface
         logging.info(f'bootstrap_servers: {kafka_params.get("bootstrap_servers")} kafka: {json.dumps(kafka_params, indent=4)}')
         self.kafkaClient = KafkaClient(**kafka_params)
         self.feed_params: Database = self.mongoClient[os.getenv("PARAMETER_DATABASE", "params")]
@@ -91,7 +91,9 @@ class FeedManager(FlaskView):
 
     @route('setActionChain/', methods=['PUT'])
     def setActionChain(self):
-        resp = session["nanny"].put('/actionsmanager/setActionChain/', resp=True)
+        logging.debug(f'Requesting nanny to set {request.get_json()}')
+        logging.debug(f'data = {request.data}')
+        resp = session["nanny"].put('/actionsmanager/setActionChain/', resp=True, payload=request.get_json())
         return Response(json.dumps(resp), mimetype='application/json')
 
     @route('clearActionErrorReports/<string:actionChainName>', methods=['DELETE'])
@@ -99,8 +101,8 @@ class FeedManager(FlaskView):
         session["nanny"].delete(f'/actionsmanager/clearActionErrorReports/{actionChainName}')
         return 'ok'
 
-    def findActionErrorReports(self, actionChainName):
-        reports = session["nanny"].get(f'/actionsmanager/findActionErrorReports/{actionChainName}', resp=True)
+    def findActionErrorReports(self, actionChainName, position):
+        reports = session["nanny"].get(f'/actionsmanager/findActionErrorReports/{actionChainName}/{position}', resp=True)
         return Response(json.dumps(reports), mimetype='application/json')
 
     def disableFeed(self, name):
@@ -222,12 +224,6 @@ class FeedManager(FlaskView):
         :return:
         """
         return Response(json.dumps({"status": True}), status=200)
-
-    def getSampleData(self, name):
-        data = r.get("http://{host}:{port}/resultloader/getSampleData/{name}".format(name=name, **summarizer_params))
-        payload = data.json()
-        ret = {"data":[{"html": str(val)} for val in payload]}
-        return Response(json.dumps(ret), mimetype='application/json')
 
     def stopFeed(self, feedName):
         """
