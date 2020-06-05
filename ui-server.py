@@ -11,11 +11,12 @@ if __name__ == '__main__':
     dictConfig(logger_settings_dict('root'))
 
     logging.getLogger('conn').setLevel('WARNING')
-    logging.getLogger('urllib').setLevel('WARNING')
+    logging.getLogger('urllib3').setLevel('WARNING')
     logging.getLogger('parser').setLevel('WARNING')
     logging.getLogger('metrics').setLevel('WARNING')
     logging.getLogger('connectionpool').setLevel('WARNING')
     logging.getLogger('kafka').setLevel('WARNING')
+    logging.getLogger('service').setLevel('DEBUG')
     logging.getLogger('config').setLevel('WARNING')
     logging.info("####### Environment #######")
     logging.debug(logger_settings_dict(__name__))

@@ -5,7 +5,6 @@ from time import time
 
 from docker.errors import APIError
 from docker.models.containers import Container
-from kafka.admin import KafkaAdminClient, NewTopic
 from kafka import KafkaClient
 from kafka.errors import TopicAlreadyExistsError
 import json
@@ -18,7 +17,7 @@ from flask_classy import FlaskView, route
 import pymongo
 from pymongo.database import Database
 
-from feed.settings import mongo_params, kafka_params, feed_params, nanny_params
+from feed.settings import mongo_params
 
 
 class FeedManager(FlaskView):
@@ -27,11 +26,8 @@ class FeedManager(FlaskView):
         self.forms: Database = self.mongoClient[os.getenv("CHAIN_DB", "actionChains")]['parameterForms']
         self.feeds: Database = self.mongoClient[os.getenv("CHAIN_DB", "actionChains")]['actionChainDefinitions']
         self.parameterSchemas = self.forms['parameterSchemas']
-        self.admin = KafkaAdminClient(**kafka_params)
         # TODO This is called multiple times, should make it so that it is only once. 
         # Take this as the beginnings of the kafka interface
-        logging.info(f'bootstrap_servers: {kafka_params.get("bootstrap_servers")} kafka: {json.dumps(kafka_params, indent=4)}')
-        self.kafkaClient = KafkaClient(**kafka_params)
         self.feed_params: Database = self.mongoClient[os.getenv("PARAMETER_DATABASE", "params")]
 
     def getParameter(self, component, feedName):
@@ -245,14 +241,7 @@ class FeedManager(FlaskView):
         :param feedName:
         :return:
         """
-        req = r.get('http://{host}:{port}/runningmanager/getStatus/{name}'.format(**nanny_params, name=feedName))
+        req = session["nanny"].get(f'/runningmanager/getStatus/{feedName}', resp=True)
         stat = req.json()
         return Response(json.dumps(stat), mimetype='application/json')
 
-def loadSuccess(browser):
-    timeMax = time() + feed_params.get('time_out', 15)
-    while time() < timeMax:
-        for line in browser.logs().decode().split('\n'):
-            if feed_params['success'] in line:
-                return True
-    return False

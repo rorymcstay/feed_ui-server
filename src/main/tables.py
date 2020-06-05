@@ -3,8 +3,8 @@ import os
 from datetime import datetime
 from json import JSONEncoder
 
-import psycopg2 as psycopg2
-from flask import Response, request
+import psycopg2
+from flask import Response, request, session
 from flask_classy import FlaskView, route
 from psycopg2._psycopg import connection, cursor
 from pymongo import MongoClient
@@ -12,9 +12,8 @@ import requests
 from feed.settings import database_parameters
 from feed.settings import mongo_params, nanny_params
 
-import logging as logger
+import logging
 
-logging = logger.getLogger(__name__)
 
 
 class TableManager(FlaskView):
@@ -27,15 +26,8 @@ class TableManager(FlaskView):
         self.numberFields = {}
 
     def getTableNames(self, feedName):
-        actions = requests.get("http://{host}:{port}/actionsmanager/queryActionChain/{name}/actions".format(name=feedName, **nanny_params))
-        try:
-            actions = actions.json()
-            actions = actions.get('actions', [])
-        except:
-            logging.info(f'actionchain not found for feedName=[{feedName}]. response was data=[{actions.data}], status=[{actions.status}]')
-        if actions is None:
-            actions = []
-        captureActions = filter(lambda action: action.get('actionType') == 'CaptureAction', actions)
+        actions = session["nanny"].get(f'/actionsmanager/queryActionChain/{feedName}/actions', resp=True, error={'actions': []})
+        captureActions = filter(lambda action: action.get('actionType') == 'CaptureAction', actions.get('actions', []))
         if not captureActions:
             captureActions = []
         captures = list(map(lambda action: "table_name like '%{}%'".format(action.get('captureName', None)), captureActions))

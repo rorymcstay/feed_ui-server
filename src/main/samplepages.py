@@ -1,7 +1,6 @@
 from flask_classy import FlaskView, route
 import os
 from bs4 import BeautifulSoup
-from feed.settings import nanny_params
 from flask import session, Response, request
 import json
 import requests as r
@@ -58,7 +57,7 @@ class SamplePages(FlaskView):
     def getSourceStatus(self, name):
         if session is None:
             return Response(json.dumps([]), mimetype='application/json')
-        actions = r.get('http://{host}:{port}/actionsmanager/queryActionChain/{chain}/actions'.format(chain=name,**nanny_params)).json().get('actions', [])
+        actions = session["nanny"].get(f'/actionsmanager/queryActionChain/{name}/actions', resp=True, errors=[])
         status =[]
         for i in range(len(actions if isinstance(actions, list) else [])):
             if i < session.num_examples:
