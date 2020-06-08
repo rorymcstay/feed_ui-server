@@ -31,32 +31,17 @@ class ScheduledActionChain:
 
 
 class JobExecutor:
-    __instance = None
-    def __init__(self):
-        if self.__instance is not None:
-            logging.warning(f'Will not make another job executor')
-            pass
-        else:
-            self.nanny = Client('nanny', check_health=False, **nanny_params)
-            self.producer = KafkaProducer(**kafka_params, value_serializer=lambda v: json.dumps(v).encode('utf-8'))
-            self.__instance = self
-
-    @staticmethod
-    def getInstance():
-        if JobExecutor.__instance:
-            return JobExecutor.__instance
-        else:
-            logging.info(f'Creating new job executor instance')
-            return JobExecutor()
+    nanny = Client('nanny', check_health=False, **nanny_params)
+    producer = KafkaProducer(**kafka_params, value_serializer=lambda v: json.dumps(v).encode('utf-8'))
 
 
     @classmethod
-    def publishActionChain(self, actionChain, queue, userID):
-        self.nanny.behalf = userID
-        chainParams = session['nanny'].get(f'/actionsmanager/getActionChain/{name}', resp=True)
+    def publishActionChain(cls, actionChain, queue, userID):
+        cls.nanny.behalf = userID
+        chainParams = cls.nanny.get(f'/actionsmanager/getActionChain/{actionChain}', resp=True)
         topic = f'{os.getenv("KAFKA_TOPIC_PREFIX", "u")}-{queue}'
         logging.info(f'publishing {actionChain} to {topic}')
-        self.producer.send(topic=topic, value=chainParams, key=bytes(chainParams.get('name'), 'utf-8'))
+        cls.producer.send(topic=topic, value=chainParams, key=bytes(chainParams.get('name'), 'utf-8'))
 
 
 class ScheduleManager(FlaskView):
@@ -64,7 +49,7 @@ class ScheduleManager(FlaskView):
         self.scheduler = BackgroundScheduler()
         self.job_store = MongoDBJobStore(database=os.getenv("CHAIN_DB", 'actionChains'), collection='client_scheduler_jobs', **mongo_params)
         self.scheduler.add_jobstore(self.job_store)
-        self.executor = JobExecutor.getInstance()
+        self.executor = JobExecutor()
         if len(sys.argv) > 1 and sys.argv[1] == '--clear':
             self.scheduler.remove_all_jobs()
         self.scheduler.start()

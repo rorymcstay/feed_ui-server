@@ -4,10 +4,7 @@ from bs4 import BeautifulSoup
 from flask import session, Response, request
 import json
 import requests as r
-
-from feed.logger import getLogger
-
-logging = getLogger(__name__)
+import logging
 
 class HtmlSource:
     def __init__(self, source):
@@ -40,27 +37,28 @@ class SamplePages(FlaskView):
 
     @route('getSamplePage/<string:name>/<int:position>')
     def getSamplePage(self, name, position):
-        if session.name is None:
-            return Response(status=404)
-        if session.num_examples <= position:
-            position = session.num_examples
-        if session.num_examples == 0 or session.example_sources(position) is None:
-            logging.info(f'example source {position} is none and status is not pending {name}')
-            return Response("<div>RefreshSources</div>", status=200, mimetype='text/html')
-        elif session.sample_pending:
-            return Response("<div>Loading</div>", status=200, mimetype='text/html')
+        num_examples = session["chain_db"]["sample_pages"].count_documents({'userID': session.userID, 'name': name})
+        if num_examples <= position:
+            logging.info(f'Position {position} not ready yet returning, using {num_examples} instead')
+            position = num_examples
         else:
-            logging.info(f'sending sample source to client, name={name}, sample_source_len={len(session.example_sources(position))}')
-            enrichedHtmlFile = HtmlSource(session.example_sources(position))
+            src = session.example_sources(position, name)
+            if not src:
+                logging.info(f'Source was None for position={position}, userID={session.userID}, name={name}')
+                return Response("<div>RefreshSources</div>", status=200, mimetype='text/html')
+            logging.info(f'sending sample source to client, name={name}, sample_source_len={len(src)}')
+            enrichedHtmlFile = HtmlSource(src)
             return Response(str(enrichedHtmlFile.soup), status=200, mimetype='text/html')
 
     def getSourceStatus(self, name):
-        if session is None:
-            return Response(json.dumps([]), mimetype='application/json')
-        actions = session["nanny"].get(f'/actionsmanager/queryActionChain/{name}/actions', resp=True, errors=[])
+        # TODO change chain_db to be of class type, so that we can have easier controle over this interface. session['chain_db'].get_collection('...')
+        logging.debug(f'counting documents for userID={session.userID}, name={name}')
+        num_examples = session["chain_db"]["sample_pages"].count_documents({'userID': session.userID, 'name': name})
+        actions = session["nanny"].get(f'/actionsmanager/queryActionChain/{name}/actions', resp=True, error={"actions":[1]})
+        logging.info(f'Getting sample page status for {len(actions.get("actions"))} actions, num_examples=[{num_examples}]')
         status =[]
-        for i in range(len(actions if isinstance(actions, list) else [])):
-            if i < session.num_examples:
+        for i in range(len(actions.get("actions") if isinstance(actions.get("actions"), list) else [1])):
+            if i < num_examples:
                 status.append({'ready': True})
             else:
                 status.append({'ready': False})
