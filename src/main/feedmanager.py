@@ -3,8 +3,6 @@ from datetime import datetime
 
 from time import time
 
-from docker.errors import APIError
-from docker.models.containers import Container
 from kafka import KafkaClient
 from kafka.errors import TopicAlreadyExistsError
 import json

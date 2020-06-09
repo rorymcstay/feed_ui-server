@@ -8,7 +8,6 @@ from apscheduler.job import Job
 from apscheduler.jobstores.mongodb import MongoDBJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from docker import client as dockerClient
 import requests
 
 from feed.settings import kafka_params, mongo_params, nanny_params
