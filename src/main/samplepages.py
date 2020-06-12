@@ -41,14 +41,13 @@ class SamplePages(FlaskView):
         if num_examples <= position:
             logging.info(f'Position {position} not ready yet returning, using {num_examples} instead')
             position = num_examples
-        else:
-            src = session.example_sources(position, name)
-            if not src:
-                logging.info(f'Source was None for position={position}, userID={session.userID}, name={name}')
-                return Response("<div>RefreshSources</div>", status=200, mimetype='text/html')
-            logging.info(f'sending sample source to client, name={name}, sample_source_len={len(src)}')
-            enrichedHtmlFile = HtmlSource(src)
-            return Response(str(enrichedHtmlFile.soup), status=200, mimetype='text/html')
+        src = session.example_sources(position, name)
+        if not src:
+            logging.info(f'Source was None for position={position}, userID={session.userID}, name={name}')
+            return Response("<div>RefreshSources</div>", status=200, mimetype='text/html')
+        logging.info(f'sending sample source to client, name={name}, sample_source_len={len(src)}')
+        enrichedHtmlFile = HtmlSource(src)
+        return Response(str(enrichedHtmlFile.soup), status=200, mimetype='text/html')
 
     def getSourceStatus(self, name):
         # TODO change chain_db to be of class type, so that we can have easier controle over this interface. session['chain_db'].get_collection('...')
