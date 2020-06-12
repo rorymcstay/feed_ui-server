@@ -24,6 +24,10 @@ COPY settings.py ./settings.py
 COPY ui-server.py ./app.py
 
 
+# add selenium static js files
+ADD ./selector/selectorgadget_combined.min.js /data/content/selectorgadget_combined.js
+ADD ./selector/selectorgadget_combined.css /data/content/selectorgadget_combined.css
+ADD ./selector/initialise_gadget.js /data/content/initialise_gadget.js
 
 ######################
 # environment variables file for image template
