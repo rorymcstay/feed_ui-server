@@ -23,6 +23,7 @@ COPY src /home/src
 COPY settings.py ./settings.py
 COPY ui-server.py ./app.py
 
+ENV SELECTOR_GADGET="/data/content"
 
 # add selenium static js files
 ADD ./selector/selectorgadget_combined.min.js /data/content/selectorgadget_combined.js
