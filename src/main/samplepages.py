@@ -21,9 +21,9 @@ class HtmlSource:
         return self.soup.new_tag(tag_type, **att)
 
     def _insertSelector(self):
-        gadget = self._get_tag('script', '/samplepages/getSelectorGadget/')
-        css = self._get_tag('link', '/samplepages/getSelectorGadgetCss/')
-        initialise = self._get_tag('script', '/samplepages/getSelectorGadgetInitialise/')
+        gadget = self._get_tag('script', '/api/samplepages/getSelectorGadget/')
+        css = self._get_tag('link', '/api/samplepages/getSelectorGadgetCss/')
+        initialise = self._get_tag('script', '/api/samplepages/getSelectorGadgetInitialise/')
         button = self.soup.new_tag('input', **dict(type="button", id="sg_toggle_btn", value="Toggle SelectorGadget"))
         self.soup.head.append(gadget)
         logging.info(f'added {gadget} to html')
@@ -44,7 +44,8 @@ class SamplePages(FlaskView):
         src = session.example_sources(position, name)
         if not src:
             logging.info(f'Source was None for position={position}, userID={session.userID}, name={name}')
-            return Response("<div>RefreshSources</div>", status=200, mimetype='text/html')
+            # TODO should provide more guidance here. We are rendering a webframe.
+            return Response("""<div>RefreshSources, or checkout the <a href="https://feedmachine.rorymcstay.com/pages/">documentation</a></div>""", status=200, mimetype='text/html')
         logging.info(f'sending sample source to client, name={name}, sample_source_len={len(src)}')
         enrichedHtmlFile = HtmlSource(src)
         return Response(str(enrichedHtmlFile.soup), status=200, mimetype='text/html')
@@ -54,7 +55,7 @@ class SamplePages(FlaskView):
         logging.debug(f'counting documents for userID={session.userID}, name={name}')
         num_examples = session["chain_db"]["sample_pages"].count_documents({'userID': session.userID, 'name': name})
         actions = session["nanny"].get(f'/actionsmanager/queryActionChain/{name}/actions', resp=True, error={"actions":[1]})
-        logging.info(f'Getting sample page status for {len(actions.get("actions"))} actions, num_examples=[{num_examples}]')
+        logging.info(f'Getting sample page status for {len(actions.get("actions", []))} actions, num_examples=[{num_examples}]')
         status =[]
         for i in range(len(actions.get("actions") if isinstance(actions.get("actions"), list) else [1])):
             if i < num_examples:

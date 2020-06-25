@@ -17,11 +17,12 @@ from feed.chainsessions import AuthorisedChainSession
 
 app = init_app(User, sessionManager=AuthorisedChainSession)
 
+app.config['APPLICATION_ROOT'] = '/api'
 
 CORS(app)
 
-FeedManager.register(app )
-ScheduleManager.register(app)
-TableManager.register(app )
-SamplePages.register(app)
-ActionsStaticData.register(app)
+FeedManager.register(app, route_prefix='/api')
+ScheduleManager.register(app, route_prefix='/api')
+TableManager.register(app , route_prefix='/api')
+SamplePages.register(app, route_prefix='/api')
+ActionsStaticData.register(app, route_prefix='/api')
